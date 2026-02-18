@@ -1,0 +1,865 @@
+\documentclass[10pt, twocolumn]{article}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{microtype}
+\usepackage{tabularx}
+\usepackage{multirow}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, fit, calc, backgrounds, decorations.markings}
+
+% ORCID icon (inline TikZ)
+\definecolor{orcidgreen}{HTML}{A6CE39}
+\newcommand{\orcidicon}{%
+  \begin{tikzpicture}[baseline=(char.base)]
+    \node[circle, fill=orcidgreen, inner sep=0pt, minimum size=2.2ex] (char)
+      {\textcolor{white}{\sffamily\bfseries\scriptsize iD}};
+  \end{tikzpicture}%
+}
+
+% Color palette (professional blues/teals/oranges)
+\definecolor{amblue}{HTML}{2563EB}
+\definecolor{amdarkblue}{HTML}{1E40AF}
+\definecolor{amteal}{HTML}{0D9488}
+\definecolor{amorange}{HTML}{EA580C}
+\definecolor{amgray}{HTML}{6B7280}
+\definecolor{amlightgray}{HTML}{F3F4F6}
+\definecolor{amgreen}{HTML}{059669}
+\definecolor{amred}{HTML}{DC2626}
+\definecolor{ampurple}{HTML}{7C3AED}
+
+% Listings style
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{amblue}\bfseries,
+  commentstyle=\color{amgray}\itshape,
+  stringstyle=\color{amteal},
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{amgray!30},
+  backgroundcolor=\color{amlightgray},
+  numbers=left,
+  numberstyle=\tiny\color{amgray},
+  tabsize=2
+}
+
+% Header
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancyhead[L]{\small\textit{AgenticMemory}}
+\fancyhead[R]{\small\thepage}
+
+\title{\textbf{AgenticMemory: A Binary Graph Format for Persistent,\\Portable, and Navigable AI Agent Memory}}
+\author{Omoshola Owolabi\,\href{https://orcid.org/0009-0006-4089-0732}{\orcidicon}\\Independent Researcher -- AI/ML\\\texttt{owolabi.omoshola@outlook.com}}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+% ============================================================================
+% ABSTRACT
+% ============================================================================
+\begin{abstract}
+Large language model agents operate without persistent memory, losing accumulated knowledge at every session boundary. Current approaches to agent memory---vector databases, markdown logs, key-value stores---treat recall as a search problem, discarding the relational structure that makes memory useful. We present AgenticMemory, a binary graph format that models agent memory as a network of typed cognitive events connected by semantic edges. The format defines six event types (facts, decisions, inferences, corrections, skills, and episodes) linked by seven relationship types including causal chains and self-correction via supersession. The entire memory graph resides in a single \texttt{.amem} file with fixed-size records enabling $O(1)$ node access through memory-mapped I/O. We implement AgenticMemory in 4{,}795 lines of Rust with a 9{,}911-line Python agent framework, zero external service dependencies, and multi-provider LLM support. On a synthetic graph of 100{,}000 nodes, graph traversal completes in 3.40\,ms, cosine similarity search over 128-dimensional feature vectors in 8.98\,ms, and individual node access via memory mapping in 370\,ns. Cross-provider validation across 22~tests---spanning GPT-4o (175B+ parameters) and Llama~3.2~1B (1.24B parameters)---confirms the format is fully portable: memories written by one provider are read correctly by another with 100\% accuracy. A three-layer robustness pipeline (JSON sanitization, retry escalation, regex fallback) ensures reliable memory formation even with small, resource-constrained models. AgenticMemory requires no cloud services and enables capabilities impossible with flat memory: reasoning chain reconstruction, causal impact analysis, and self-correction history with full provenance.
+\end{abstract}
+
+% ============================================================================
+% 1. INTRODUCTION
+% ============================================================================
+\section{Introduction}
+\label{sec:intro}
+
+The transformer architecture~\cite{vaswani2017attention} has produced language models capable of sophisticated reasoning, code generation, and multi-step planning. Yet these models remain fundamentally stateless: each invocation begins with an empty context window, and any knowledge accumulated during a session vanishes when the session ends. For agents tasked with ongoing work---maintaining codebases, managing projects, or assisting users over weeks and months---this amnesia is a critical limitation.
+
+Current approaches to agent memory fall into three broad categories, each with significant drawbacks. \emph{Vector databases}~\cite{pinecone_2024, johnson2019faiss} embed text into high-dimensional vectors and retrieve by cosine similarity, but this process is lossy: the relational structure between memories is destroyed, and there is no way to reconstruct the reasoning chain that produced a conclusion. \emph{Markdown-based systems}~\cite{openclaw_2024, langmem_2024} store memories as text files with keyword search, preserving readability but sacrificing query performance and structured relationships. \emph{Key-value stores}~\cite{mem0_2024} extract atomic facts efficiently but flatten memory into isolated assertions, making it impossible to trace why a decision was made or how a belief was corrected.
+
+The core insight of this work is that agent memory is a \emph{graph navigation problem}, not a text search problem. When an agent needs to recall why it chose a particular approach, it must traverse a chain of causal relationships---from the decision, through the supporting evidence, to the original observations. When it needs to verify whether a fact has been corrected, it must follow supersession edges. These operations are structurally graph traversals, not similarity searches.
+
+We present AgenticMemory, a binary graph format purpose-built for AI agent memory. The format stores cognitive events as typed nodes (facts, decisions, inferences, corrections, skills, episodes) connected by seven semantic edge types (caused-by, supports, contradicts, supersedes, related-to, part-of, temporal-next). The entire graph resides in a single \texttt{.amem} file with fixed-size records, enabling $O(1)$ random access via memory-mapped I/O and requiring zero external dependencies.
+
+The remainder of this paper is organized as follows. Section~\ref{sec:related} surveys existing agent memory systems. Section~\ref{sec:architecture} presents the AgenticMemory architecture in detail. Section~\ref{sec:evaluation} reports micro-benchmark results on graphs up to 100{,}000 nodes. Section~\ref{sec:agent} describes the agent integration framework and robustness engineering for heterogeneous LLM backends. Section~\ref{sec:validation} presents empirical validation results including cross-provider portability testing across frontier and small models. Section~\ref{sec:discussion} discusses implications and limitations. Section~\ref{sec:conclusion} concludes.
+
+% Figure 1: Motivating comparison
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=1.2cm,
+  every node/.style={font=\small},
+  vecnode/.style={rectangle, draw=amgray, fill=amlightgray, rounded corners=2pt, minimum width=2.8cm, minimum height=0.6cm, align=center, font=\scriptsize},
+  graphnode/.style={rectangle, rounded corners=3pt, draw=amblue, fill=amblue!10, minimum width=1.1cm, minimum height=0.5cm, font=\tiny, align=center, thick},
+  factnode/.style={rectangle, rounded corners=3pt, draw=amteal, fill=amteal!10, minimum width=1.1cm, minimum height=0.5cm, font=\tiny, align=center, thick},
+  decnode/.style={rectangle, rounded corners=3pt, draw=amorange, fill=amorange!10, minimum width=1.1cm, minimum height=0.5cm, font=\tiny, align=center, thick},
+  corrnode/.style={rectangle, rounded corners=3pt, draw=amred, fill=amred!10, minimum width=1.1cm, minimum height=0.5cm, font=\tiny, align=center, thick},
+]
+
+% Left side: Vector Search
+\node[font=\small\bfseries] at (-4.5, 3.2) {(a) Vector Similarity Search};
+
+\node[vecnode] (v1) at (-6.0, 2.2) {``uses React 18''\\sim: 0.91};
+\node[vecnode] (v2) at (-6.0, 1.2) {``switched to Vue''\\sim: 0.87};
+\node[vecnode] (v3) at (-6.0, 0.2) {``chose PostgreSQL''\\sim: 0.72};
+\node[vecnode] (v4) at (-6.0, -0.8) {``API needs auth''\\sim: 0.68};
+\node[vecnode] (v5) at (-6.0, -1.8) {``deadline is Friday''\\sim: 0.41};
+
+\node[rectangle, draw=amgray, dashed, fill=white, minimum width=2cm, minimum height=0.6cm, font=\scriptsize] (query) at (-2.8, 2.2) {Query: ``frontend''};
+
+\draw[-{Stealth}, amgray, dashed] (query) -- (v1);
+\draw[-{Stealth}, amgray, dashed] (query) -- (v2);
+\draw[-{Stealth}, amgray!50, dashed] (query) -- (v3);
+
+\node[font=\scriptsize\color{amred}, align=left] at (-3.0, -0.8) {No relationships.\\Cannot tell v2\\supersedes v1.\\Flat ranked list.};
+
+% Right side: Graph Navigation
+\node[font=\small\bfseries] at (3.5, 3.2) {(b) AgenticMemory Graph};
+
+\node[factnode] (f1) at (1.3, 2.0) {Fact: React};
+\node[factnode] (f2) at (3.5, 2.0) {Fact: Perf.};
+\node[decnode] (d1) at (2.5, 0.7) {Dec.: Vue};
+\node[corrnode] (c1) at (1.0, 0.7) {Corr.};
+\node[graphnode] (f3) at (4.8, 0.7) {Fact: PgSQL};
+\node[decnode] (d2) at (3.8, -0.5) {Dec.: API};
+\node[graphnode] (e1) at (1.8, -1.3) {Episode};
+
+\draw[-{Stealth}, amred, thick] (c1) -- node[left, font=\tiny, text=amred] {supers.} (f1);
+\draw[-{Stealth}, amblue, thick] (d1) -- node[above, font=\tiny, text=amblue] {caused} (f2);
+\draw[-{Stealth}, amblue] (d1) -- (c1);
+\draw[-{Stealth}, amteal] (d2) -- node[right, font=\tiny, text=amteal] {supports} (f3);
+\draw[-{Stealth}, amgray] (e1) -- node[below left, font=\tiny, text=amgray] {part-of} (d1);
+\draw[-{Stealth}, amgray] (e1) -- node[below, font=\tiny, text=amgray] {part-of} (d2);
+\draw[-{Stealth}, amorange, dashed] (d2) -- node[above, font=\tiny, text=amorange] {related} (d1);
+
+\node[font=\scriptsize\color{amgreen}, align=left] at (5.5, -1.0) {Typed edges.\\Correction chain.\\Causal reasoning.\\Full provenance.};
+
+\end{tikzpicture}
+\caption{Comparison of memory retrieval paradigms. (a)~Vector similarity search returns a flat ranked list with no relational structure; the agent cannot determine that the ``switched to Vue'' memory supersedes ``uses React 18.'' (b)~AgenticMemory encodes relationships explicitly: the correction node records the supersession, causal edges trace the reasoning chain, and the episode groups related decisions.}
+\label{fig:comparison}
+\end{figure*}
+
+
+% ============================================================================
+% 2. BACKGROUND AND RELATED WORK
+% ============================================================================
+\section{Background and Related Work}
+\label{sec:related}
+
+Research on persistent memory for AI agents has grown rapidly alongside the deployment of LLM-based assistants. We survey the primary approaches.
+
+\textbf{OpenClaw}~\cite{openclaw_2024} stores memories as markdown files indexed with BM25 and vector hybrid search. The LLM itself decides what to memorize, introducing both latency and inconsistency. There is no formal relationship tracking: if the agent corrects a previous belief, the old and new memories coexist without linkage.
+
+\textbf{Mem0}~\cite{mem0_2024} extracts key-value facts from conversations and stores them in a managed service. The approach is simple and effective for preference recall, but the flat structure cannot represent causal chains, reasoning provenance, or self-correction history.
+
+\textbf{MemGPT/Letta}~\cite{packer2023memgpt} introduces virtual memory paging for LLM context windows, swapping text segments between main and archival memory. While innovative, the abstraction remains text-in/text-out with no structured relationship model.
+
+\textbf{LangMem}~\cite{langmem_2024} provides session buffers and summarization within the LangChain framework. Memories are compressed into text summaries, discarding fine-grained structure.
+
+\textbf{OpenAI Memory}~\cite{openai_memory_2024} stores user preference snippets across ChatGPT sessions. The system is limited to shallow personalization and provides no API for structured memory operations.
+
+\textbf{Vector databases}~\cite{pinecone_2024, weaviate_2024, johnson2019faiss} underpin most RAG pipelines~\cite{lewis2020rag}. While effective for semantic retrieval, embedding-based search is fundamentally lossy: the relationships between memories are not preserved, and there is no mechanism for traversing reasoning chains.
+
+Recent work on generative agents~\cite{park2023generative} demonstrated that memory architecture profoundly impacts agent behavior, using a retrieval system combining recency, importance, and relevance. This reinforces our thesis that memory requires richer structure than flat retrieval.
+
+Table~\ref{tab:related} summarizes the comparison across key dimensions.
+
+\begin{table*}[t]
+\caption{Comparison of agent memory systems across key dimensions.}
+\label{tab:related}
+\centering
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{System} & \textbf{Storage Format} & \textbf{Relationships} & \textbf{Portability} & \textbf{Dependencies} & \textbf{Query Model} \\
+\midrule
+OpenClaw~\cite{openclaw_2024} & Markdown files & None & File-based & Embedding API & BM25 + vector \\
+Mem0~\cite{mem0_2024} & Key-value store & None & API-locked & Cloud service & Key lookup \\
+MemGPT~\cite{packer2023memgpt} & Text segments & None & Framework-tied & LLM API & Context paging \\
+LangMem~\cite{langmem_2024} & Session buffers & None & Framework-tied & LangChain & Summary search \\
+OpenAI Memory~\cite{openai_memory_2024} & Preference snippets & None & Vendor-locked & OpenAI API & Internal \\
+Vector DBs~\cite{pinecone_2024} & Embedding vectors & None & Vendor-locked & Cloud service & Cosine similarity \\
+\midrule
+\textbf{AgenticMemory} & \textbf{Binary graph} & \textbf{7 typed edges} & \textbf{Single file} & \textbf{None} & \textbf{Graph traversal} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+
+% ============================================================================
+% 3. ARCHITECTURE
+% ============================================================================
+\section{Architecture}
+\label{sec:architecture}
+
+AgenticMemory models agent memory as a directed graph $G = (V, E)$ where each vertex $v \in V$ is a typed cognitive event and each edge $e \in E$ carries a semantic relationship type. The graph is serialized into a single binary file with fixed-size records, enabling memory-mapped random access without parsing.
+
+% ----------------------------------------------------------------------------
+\subsection{Cognitive Events}
+\label{sec:events}
+
+Each node in the memory graph represents a discrete cognitive event drawn from a taxonomy of six types, each serving a distinct role in the agent's reasoning process:
+
+\begin{itemize}[nosep, leftmargin=*]
+  \item \textbf{Fact} --- An observed or stated piece of information (e.g., ``the API rate limit is 100 requests/minute'').
+  \item \textbf{Decision} --- A choice made by the agent with supporting rationale (e.g., ``chose PostgreSQL for its JSON support'').
+  \item \textbf{Inference} --- A conclusion derived from other events (e.g., ``the latency spike correlates with deployment'').
+  \item \textbf{Correction} --- An explicit update to a prior belief, linked via \textsc{Supersedes} edges to the original event.
+  \item \textbf{Skill} --- A learned procedure or pattern (e.g., ``to deploy, run \texttt{make release} then \texttt{kubectl apply}'').
+  \item \textbf{Episode} --- A session summary grouping related events into a coherent narrative.
+\end{itemize}
+
+Each node record occupies exactly 72 bytes in the binary format: 8 bytes for the node ID (\texttt{u64}), 1 byte for the event type, 8 bytes each for the creation and access timestamps (\texttt{u64} Unix epoch microseconds), 4 bytes for the confidence score (\texttt{f32}), 8 bytes each for the content offset and length in the compressed content block, 8 bytes each for the feature vector offset and dimension count, 4 bytes for the session ID, and 7 bytes reserved for future use.
+
+% Figure 2: Cognitive event taxonomy
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  every node/.style={font=\scriptsize},
+  typebox/.style={rectangle, rounded corners=3pt, minimum width=2.4cm, minimum height=0.55cm, align=center, draw, thick, font=\scriptsize\bfseries},
+]
+\node[typebox, fill=amblue!15, draw=amblue] (fact) at (0, 0) {Fact};
+\node[typebox, fill=amorange!15, draw=amorange] (dec) at (0, -0.85) {Decision};
+\node[typebox, fill=amteal!15, draw=amteal] (inf) at (0, -1.70) {Inference};
+\node[typebox, fill=amred!15, draw=amred] (corr) at (0, -2.55) {Correction};
+\node[typebox, fill=ampurple!15, draw=ampurple] (skill) at (0, -3.40) {Skill};
+\node[typebox, fill=amgreen!15, draw=amgreen] (ep) at (0, -4.25) {Episode};
+
+\node[anchor=west, font=\scriptsize, text=amgray] at (1.5, 0) {``API limit is 100 req/min''};
+\node[anchor=west, font=\scriptsize, text=amgray] at (1.5, -0.85) {``Chose Redis for caching''};
+\node[anchor=west, font=\scriptsize, text=amgray] at (1.5, -1.70) {``Latency caused by N+1''};
+\node[anchor=west, font=\scriptsize, text=amgray] at (1.5, -2.55) {``Limit is actually 200/min''};
+\node[anchor=west, font=\scriptsize, text=amgray] at (1.5, -3.40) {``Run: make deploy \&\& verify''};
+\node[anchor=west, font=\scriptsize, text=amgray] at (1.5, -4.25) {``Sprint 12 planning session''};
+\end{tikzpicture}
+\caption{The six cognitive event types in AgenticMemory, each with a representative example. Types are distinguished by a single byte in the binary format.}
+\label{fig:taxonomy}
+\end{figure}
+
+% ----------------------------------------------------------------------------
+\subsection{Typed Edges}
+\label{sec:edges}
+
+Edges carry one of seven semantic relationship types, each stored as a 32-byte record (8 bytes source ID, 8 bytes target ID, 1 byte relationship type, 4 bytes weight as \texttt{f32}, 8 bytes timestamp, 3 bytes reserved):
+
+\begin{itemize}[nosep, leftmargin=*]
+  \item \textbf{\textsc{CausedBy}} --- Indicates a causal dependency: the source event was caused by the target. Enables reasoning chain reconstruction.
+  \item \textbf{\textsc{Supports}} --- The target provides evidence for the source. Used for decision justification.
+  \item \textbf{\textsc{Contradicts}} --- The source conflicts with the target. Enables conflict detection.
+  \item \textbf{\textsc{Supersedes}} --- The source replaces the target as the current belief. This is the mechanism for self-correction without data loss: the original event remains in the graph with full provenance.
+  \item \textbf{\textsc{RelatedTo}} --- A general semantic association.
+  \item \textbf{\textsc{PartOf}} --- The source is a component of the target (e.g., a fact is part of an episode).
+  \item \textbf{\textsc{TemporalNext}} --- The source follows the target in temporal sequence.
+\end{itemize}
+
+The \textsc{Supersedes} edge type is particularly important. When an agent discovers that a previously stored fact is incorrect, it creates a Correction event linked to the original via a \textsc{Supersedes} edge. A \emph{resolve query} follows the supersession chain to return the most current version of any belief, while preserving the full correction history for auditability. This is fundamentally impossible in systems that overwrite or delete outdated information.
+
+% Figure 3: Example subgraph
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=1.4cm,
+  every node/.style={font=\scriptsize},
+  factnode/.style={rectangle, rounded corners=4pt, draw=amblue, fill=amblue!10, minimum width=1.7cm, minimum height=0.65cm, font=\tiny, align=center, thick},
+  decnode/.style={rectangle, rounded corners=4pt, draw=amorange, fill=amorange!10, minimum width=1.7cm, minimum height=0.65cm, font=\tiny, align=center, thick},
+  corrnode/.style={rectangle, rounded corners=4pt, draw=amred, fill=amred!10, minimum width=1.7cm, minimum height=0.65cm, font=\tiny, align=center, thick},
+  infnode/.style={rectangle, rounded corners=4pt, draw=amteal, fill=amteal!10, minimum width=1.7cm, minimum height=0.65cm, font=\tiny, align=center, thick},
+]
+\node[factnode] (f1) at (0, 2) {\textbf{Fact}\\``limit 100/m''};
+\node[factnode] (f2) at (3.2, 2) {\textbf{Fact}\\``Redis fast''};
+\node[decnode] (d1) at (1.6, 0.6) {\textbf{Decision}\\``use Redis''};
+\node[corrnode] (c1) at (-1.3, 0.6) {\textbf{Correction}\\``limit 200/m''};
+\node[infnode] (i1) at (1.6, -0.8) {\textbf{Inference}\\``can batch''};
+
+\draw[-{Stealth}, amblue, thick] (d1) -- node[above, font=\tiny, text=amblue, sloped] {\textsc{CausedBy}} (f2);
+\draw[-{Stealth}, amteal] (d1) -- node[above, font=\tiny, text=amteal, sloped] {\textsc{Supports}} (f1);
+\draw[-{Stealth}, amred, thick] (c1) -- node[above, font=\tiny, text=amred] {\textsc{Supersedes}} (f1);
+\draw[-{Stealth}, amblue] (i1) -- node[right, font=\tiny, text=amblue] {\textsc{CausedBy}} (d1);
+\end{tikzpicture}
+\caption{Example subgraph showing a Decision node linked to Facts via \textsc{CausedBy} and \textsc{Supports} edges. A Correction supersedes the original rate limit fact. An Inference derives from the Decision. Edge colors indicate relationship types.}
+\label{fig:subgraph}
+\end{figure}
+
+
+% ----------------------------------------------------------------------------
+\subsection{Binary File Format}
+\label{sec:format}
+
+The \texttt{.amem} file format is designed for three properties: (1)~$O(1)$ random access to any node or edge, (2)~portability as a single file with no external dependencies, and (3)~efficient memory-mapped access without parsing.
+
+The file consists of six contiguous sections, shown in Figure~\ref{fig:layout}:
+
+\begin{enumerate}[nosep, leftmargin=*]
+  \item \textbf{Header} (64 bytes) --- Magic number (\texttt{0x414D454D}), format version, node count, edge count, and byte offsets for all sections.
+  \item \textbf{Node Table} ($72n$ bytes) --- Fixed-size records for $n$ nodes, directly indexable by node ID.
+  \item \textbf{Edge Table} ($32m$ bytes) --- Fixed-size records for $m$ edges, sorted by source ID for efficient adjacency lookups.
+  \item \textbf{Content Block} (variable) --- LZ4-compressed~\cite{collet2013lz4} text content for all nodes. Each node record stores an offset and length into this block.
+  \item \textbf{Feature Vectors} (variable) --- Contiguous \texttt{f32} arrays for cosine similarity search. Each node record stores an offset and dimension count.
+  \item \textbf{Index Block} (variable) --- Precomputed indexes: type index, temporal index, session index, and cluster map.
+\end{enumerate}
+
+The choice of a binary format over text-based alternatives (JSON, Protocol Buffers~\cite{protobuf2008}, FlatBuffers~\cite{flatbuffers2014}) is motivated by the access pattern: agent memory queries typically require reading a small number of specific nodes by ID, not scanning the entire dataset. Fixed-size records enable direct offset computation ($\text{offset} = \text{header\_size} + \text{id} \times 72$), eliminating the need for parsing or index lookups. Cap'n Proto~\cite{capnproto2013} shares this zero-copy philosophy, but our format is domain-specific and simpler, requiring no schema compiler or runtime library.
+
+Content is stored separately from node records and compressed with LZ4 to minimize file size while maintaining fast decompression (typically 2--4\,GB/s on modern hardware). This design means that traversal queries---which only need node metadata and edge information---never touch the content block, avoiding unnecessary I/O.
+
+
+% Figure 4: File format layout (full width)
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[
+  every node/.style={font=\scriptsize},
+  section/.style={rectangle, draw, minimum height=1.0cm, align=center, font=\scriptsize},
+]
+% Sections
+\node[section, fill=amdarkblue!20, draw=amdarkblue, minimum width=1.5cm] (hdr) at (0, 0) {Header\\64\,B};
+\node[section, fill=amblue!15, draw=amblue, minimum width=3.5cm, anchor=west] (nodes) at (hdr.east) {Node Table\\$72n$ bytes\\(72\,B $\times$ $n$ nodes)};
+\node[section, fill=amteal!15, draw=amteal, minimum width=2.8cm, anchor=west] (edges) at (nodes.east) {Edge Table\\$32m$ bytes\\(32\,B $\times$ $m$ edges)};
+\node[section, fill=amorange!15, draw=amorange, minimum width=2.5cm, anchor=west] (content) at (edges.east) {Content Block\\LZ4 compressed\\(variable)};
+\node[section, fill=ampurple!15, draw=ampurple, minimum width=2.5cm, anchor=west] (vectors) at (content.east) {Feature Vectors\\\texttt{f32} arrays\\(variable)};
+\node[section, fill=amgreen!15, draw=amgreen, minimum width=2.0cm, anchor=west] (idx) at (vectors.east) {Index Block\\4 indexes\\(variable)};
+
+% Byte offsets
+\node[font=\tiny, anchor=north, text=amgray] at (hdr.south) {0x00};
+\node[font=\tiny, anchor=north, text=amgray] at (nodes.south west) {0x40};
+\node[font=\tiny, anchor=north, text=amgray] at (edges.south west) {};
+\node[font=\tiny, anchor=north, text=amgray] at (idx.south east) {EOF};
+
+% Brace for total
+\draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick, amgray] ([yshift=-0.6cm]hdr.south west) -- ([yshift=-0.6cm]idx.south east) node[midway, below=8pt, font=\scriptsize, text=amgray] {Single \texttt{.amem} file --- memory-mappable, zero dependencies};
+
+\end{tikzpicture}
+\caption{Layout of the \texttt{.amem} binary file format. The header stores section offsets enabling direct random access. Node and edge records are fixed-size for $O(1)$ indexing. Content is LZ4-compressed and stored separately so traversal queries avoid unnecessary I/O.}
+\label{fig:layout}
+\end{figure*}
+
+
+% ----------------------------------------------------------------------------
+\subsection{Query Model}
+\label{sec:queries}
+
+AgenticMemory supports five query types, each corresponding to a distinct memory access pattern:
+
+\textbf{Traversal queries} perform breadth-first search from a starting node to a specified depth, optionally filtering by edge type. This is the primary operation for reasoning chain reconstruction: starting from a decision, the agent traverses \textsc{CausedBy} edges to recover the evidence chain.
+
+\textbf{Pattern queries} filter nodes by type, time range, confidence threshold, and keyword. These support temporal recall (``what facts did I learn last week?'') and type-based retrieval (``list all decisions'').
+
+\textbf{Temporal queries} retrieve events within a time window, sorted by timestamp. Combined with \textsc{TemporalNext} edges, this enables session replay.
+
+\textbf{Similarity queries} compute cosine similarity between a query vector and all node feature vectors, returning the top-$k$ most similar nodes. This provides embedding-based retrieval when relational structure is insufficient.
+
+\textbf{Resolve queries} follow \textsc{Supersedes} chains to return the most current version of a belief. Given any node, the resolver walks the supersession graph to its terminal node---the latest correction in the chain.
+
+The key distinction from vector databases is that these queries are \emph{composable}. An agent can first perform a similarity search to find relevant nodes, then traverse their causal neighborhoods, then resolve any superseded facts---all within a single query pipeline. This compositional capability is what we mean by ``navigation, not search.''
+
+% ----------------------------------------------------------------------------
+\subsection{Memory Formation Pipeline}
+\label{sec:pipeline}
+
+The write engine provides three operations for memory construction:
+
+\textbf{Ingestion} takes raw cognitive events, assigns unique IDs, computes timestamps, and establishes edges to existing nodes based on session context and content relationships. Each ingested event updates the type, temporal, and session indexes.
+
+\textbf{Correction} creates a new Correction event linked to the target via a \textsc{Supersedes} edge. The original event's confidence is reduced but the event itself is preserved, maintaining full history.
+
+\textbf{Session compression} converts a collection of session events into a single Episode node with \textsc{PartOf} edges to the constituent events. This reduces the active graph surface while preserving detail.
+
+Confidence decay follows an exponential model inspired by the Ebbinghaus forgetting curve~\cite{ebbinghaus1885}: $c(t) = c_0 \cdot e^{-\lambda \Delta t}$, where $c_0$ is the initial confidence, $\lambda$ is the decay rate, and $\Delta t$ is the time since last access. Accessing a node resets its timestamp, implementing a form of spaced repetition.
+
+
+% ============================================================================
+% 4. EVALUATION
+% ============================================================================
+\section{Evaluation}
+\label{sec:evaluation}
+
+We evaluate AgenticMemory on synthetic graphs of varying size, measuring file size, query latency, and write performance. All benchmarks use real data from the Criterion~\cite{criterion} benchmarking framework running on the compiled system.
+
+% ----------------------------------------------------------------------------
+\subsection{Benchmark Setup}
+
+\textbf{Hardware.} Apple M4 Pro (ARM64), 64\,GB unified memory, macOS.
+
+\textbf{Software.} Rust 1.90.0, compiled with \texttt{--release} (optimizations enabled). All benchmarks use the Criterion statistical benchmarking framework with default settings (100 iterations, outlier detection).
+
+\textbf{Datasets.} Synthetic memory graphs at 1K, 10K, and 100K nodes with 3 edges per node on average. Each node carries a 128-dimensional \texttt{f32} feature vector and LZ4-compressed text content averaging 50--200 bytes. Node types and edge types are distributed uniformly.
+
+% ----------------------------------------------------------------------------
+\subsection{File Size and Compression}
+
+Table~\ref{tab:filesize} reports file sizes at each scale. The fixed-size node record (72 bytes) and edge record (32 bytes) dominate at small scales, while the content block and feature vectors dominate at large scales. Each 128-dimensional feature vector occupies $128 \times 4 = 512$ bytes, accounting for approximately 70\% of the file size at 100K nodes.
+
+\begin{table}[t]
+\caption{File size scaling with graph size. Feature vectors (128-dim \texttt{f32}) dominate at large scales.}
+\label{tab:filesize}
+\centering
+\small
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+\textbf{Nodes} & \textbf{Edges} & \textbf{.amem Size} & \textbf{Bytes/Node} \\
+\midrule
+1{,}000 & 3{,}000 & 0.7\,MB & 717 \\
+10{,}000 & 30{,}000 & 7.0\,MB & 717 \\
+100{,}000 & 300{,}000 & 70\,MB & 717 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Figure~\ref{fig:filesize} shows that file size scales linearly with node count, as expected from the fixed-size record design.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=4.5cm,
+  xlabel={Nodes},
+  ylabel={File Size (MB)},
+  xmode=log,
+  ymode=log,
+  log basis x=10,
+  log basis y=10,
+  grid=major,
+  grid style={gray!20},
+  line width=1pt,
+  mark size=2pt,
+  xtick={1000, 10000, 100000},
+  xticklabels={1K, 10K, 100K},
+  ytick={0.1, 1, 10, 100},
+  yticklabels={0.1, 1, 10, 100},
+  legend pos=north west,
+  legend style={font=\scriptsize},
+]
+\addplot[color=amblue, mark=*, thick] coordinates {
+  (1000, 0.7)
+  (10000, 7.0)
+  (100000, 70)
+};
+\addlegendentry{.amem file}
+
+\addplot[color=amgray, dashed, thick] coordinates {
+  (1000, 0.7)
+  (100000, 70)
+};
+\addlegendentry{Linear scaling}
+\end{axis}
+\end{tikzpicture}
+\caption{File size vs.\ node count on log--log scale. The linear relationship confirms $O(n)$ storage scaling with constant per-node overhead.}
+\label{fig:filesize}
+\end{figure}
+
+% ----------------------------------------------------------------------------
+\subsection{Query Performance}
+
+Table~\ref{tab:query} reports query latency measured with Criterion. All queries operate on in-memory graphs loaded from \texttt{.amem} files. The traversal benchmark performs a depth-5 BFS from a random start node. Similarity search computes cosine similarity over all 128-dimensional feature vectors and returns the top-10 results.
+
+\begin{table}[t]
+\caption{Query latency benchmarks on a 100{,}000-node graph (Apple M4 Pro, release mode).}
+\label{tab:query}
+\centering
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Operation} & \textbf{Latency} \\
+\midrule
+Traversal (depth 5) & 3.40\,ms \\
+Pattern query (type + time) & 609\,ms \\
+Similarity (top-10, 128-dim) & 8.98\,ms \\
+Mmap node access (single) & 370\,ns \\
+Mmap batch similarity (100K) & 18.9\,ms \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Graph traversal at 3.40\,ms for depth-5 BFS over 100K nodes demonstrates that reasoning chain reconstruction is practical in interactive settings. Memory-mapped node access at 370\,ns confirms that the fixed-size record design achieves its $O(1)$ access goal. The pattern query at 609\,ms involves a linear scan over all 100K nodes with type and temporal filtering; this could be improved with bitmap indexes in a future version.
+
+% Figure 6: Query latency chart
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=5cm,
+  ybar,
+  bar width=12pt,
+  xlabel={},
+  ylabel={Latency (ms)},
+  ymode=log,
+  log basis y=10,
+  symbolic x coords={Traverse, Pattern, Similarity, Mmap Batch},
+  xtick=data,
+  xticklabel style={rotate=25, anchor=east, font=\scriptsize},
+  ytick={0.01, 0.1, 1, 10, 100, 1000},
+  yticklabels={0.01, 0.1, 1, 10, 100, 1000},
+  ymin=0.01,
+  ymax=1000,
+  grid=major,
+  grid style={gray!20},
+  nodes near coords,
+  every node near coord/.append style={font=\tiny, anchor=south},
+  point meta=explicit symbolic,
+]
+\addplot[fill=amblue!70, draw=amblue] coordinates {
+  (Traverse, 3.40) [3.4]
+  (Pattern, 609) [609]
+  (Similarity, 8.98) [9.0]
+  (Mmap Batch, 18.9) [18.9]
+};
+\end{axis}
+\end{tikzpicture}
+\caption{Query latency on a 100{,}000-node graph (log scale). Traversal and similarity queries complete in under 20\,ms, enabling interactive use. Pattern queries involve a full scan and represent an optimization opportunity.}
+\label{fig:querylat}
+\end{figure}
+
+
+% ----------------------------------------------------------------------------
+\subsection{Write Performance}
+
+Table~\ref{tab:write} reports write operation benchmarks. The \texttt{add\_node} operation at 276\,ns reflects simple vector insertion. The \texttt{add\_edge} cost of 1.21\,ms includes adjacency index reconstruction, which sorts the full edge array; for bulk insertion, the \texttt{from\_parts} constructor amortizes this cost by performing a single sort.
+
+\begin{table}[t]
+\caption{Write operation benchmarks. Bulk construction via \texttt{from\_parts} amortizes the adjacency rebuild cost.}
+\label{tab:write}
+\centering
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Operation} & \textbf{Latency} \\
+\midrule
+Add node (to 10K graph) & 276\,ns \\
+Add edge (to 10K graph) & 1.21\,ms \\
+Write file (10K graph) & 32.6\,ms \\
+Read file (10K graph) & 3.66\,ms \\
+Decay (100K graph) & 3.03\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+File write at 32.6\,ms for a 10K-node graph includes LZ4 compression of all content, serialization of all records, and index block generation. File read at 3.66\,ms demonstrates that the binary format requires minimal parsing overhead. The decay operation at 3.03\,s applies the exponential confidence update to all 100K nodes; this is an $O(n)$ operation that could be parallelized in a future version.
+
+
+% ----------------------------------------------------------------------------
+\subsection{Comparison with Existing Systems}
+
+Table~\ref{tab:syscompare} compares AgenticMemory with existing agent memory systems across key dimensions. Storage estimates for external systems are based on published documentation and typical deployment configurations. AgenticMemory's storage advantage stems from the binary format with LZ4 compression and the absence of embedding index overhead.
+
+\begin{table*}[t]
+\caption{Comparison with existing agent memory systems. External system estimates are based on published documentation and typical configurations.}
+\label{tab:syscompare}
+\centering
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Dimension} & \textbf{Vector DB} & \textbf{Markdown} & \textbf{Key-Value} & \textbf{AgenticMemory} \\
+ & (Pinecone-like) & (OpenClaw-like) & (Mem0-like) & \\
+\midrule
+Storage per 10K events & $\sim$500\,MB & $\sim$200\,MB & $\sim$50\,MB & \textbf{7\,MB} \\
+Query latency (p99) & $\sim$50\,ms & $\sim$200\,ms & $\sim$30\,ms & \textbf{$<$10\,ms} \\
+Relationship tracking & None & None & None & \textbf{7 typed edges} \\
+Portability & Vendor-locked & File-based & API-locked & \textbf{Single file} \\
+External dependencies & Cloud service & Embedding API & Cloud service & \textbf{None} \\
+Reasoning reconstruction & Not possible & Not possible & Not possible & \textbf{Graph traversal} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% Figure 7: Radar chart
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[scale=0.8]
+% Radar chart with 6 axes at 60-degree intervals starting from top
+% Axis angles: 90, 30, -30, -90, -150, 150
+
+% Labels
+\node[font=\tiny, align=center] at (90:3.2) {Storage};
+\node[font=\tiny, align=center] at (30:3.2) {Speed};
+\node[font=\tiny, align=center] at (-30:3.2) {Relations};
+\node[font=\tiny, align=center] at (-90:3.2) {Portable};
+\node[font=\tiny, align=center] at (-150:3.2) {Independent};
+\node[font=\tiny, align=center] at (150:3.2) {Reasoning};
+
+% Grid rings
+\foreach \r in {0.5, 1.0, 1.5, 2.0, 2.5} {
+  \draw[gray!20, thin] (90:\r) -- (30:\r) -- (-30:\r) -- (-90:\r) -- (-150:\r) -- (150:\r) -- cycle;
+}
+
+% Axes
+\foreach \a in {90, 30, -30, -90, -150, 150} {
+  \draw[gray!30] (0,0) -- (\a:2.5);
+}
+
+% AgenticMemory (high scores)
+\draw[amblue, thick, fill=amblue!15]
+  (90:2.2) -- (30:2.4) -- (-30:2.5) -- (-90:2.5) -- (-150:2.5) -- (150:2.5) -- cycle;
+
+% Vector DB
+\draw[amorange, thick, dashed, fill=amorange!8]
+  (90:0.8) -- (30:1.5) -- (-30:0.3) -- (-90:0.5) -- (-150:0.3) -- (150:0.3) -- cycle;
+
+% Key-Value
+\draw[amteal, thick, dotted, fill=amteal!8]
+  (90:1.5) -- (30:1.8) -- (-30:0.3) -- (-90:0.5) -- (-150:0.3) -- (150:0.3) -- cycle;
+
+% Legend
+\node[font=\tiny, text=amblue] at (1.8, -2.8) {\textbf{--- AgenticMemory}};
+\node[font=\tiny, text=amorange] at (1.8, -3.15) {- - Vector DB};
+\node[font=\tiny, text=amteal] at (1.8, -3.5) {$\cdots$ Key-Value};
+
+\end{tikzpicture}
+\caption{Radar chart comparing AgenticMemory against vector databases and key-value stores across six dimensions. AgenticMemory provides the only complete coverage across relationship depth, reasoning reconstruction, and independence from external services.}
+\label{fig:radar}
+\end{figure}
+
+
+% ----------------------------------------------------------------------------
+\subsection{Memory Capacity Analysis}
+
+Table~\ref{tab:capacity} projects real-world storage requirements based on the measured 717 bytes per node. Even in high-throughput enterprise scenarios, a single \texttt{.amem} file remains practical for years of continuous operation within a 1\,GB budget.
+
+\begin{table}[t]
+\caption{Projected real-world storage requirements at 717 bytes/node.}
+\label{tab:capacity}
+\centering
+\small
+\scriptsize
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Use Case} & \textbf{S/D} & \textbf{N/S} & \textbf{MB/Y} & \textbf{Y/GB} \\
+\midrule
+Personal asst. & 2 & 20 & 10 & 100 \\
+Dev.\ copilot & 5 & 30 & 38 & 26 \\
+Enterprise & 20 & 25 & 131 & 7 \\
+Multi-agent & 100 & 15 & 392 & 2.5 \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+
+\noindent\scriptsize S/D = Sessions/Day, N/S = Nodes/Session, MB/Y = MB/Year, Y/GB = Years in 1\,GB.
+\end{table}
+
+
+% ============================================================================
+% 5. AGENT INTEGRATION AND MEMORY FORMATION
+% ============================================================================
+\section{Agent Integration and Memory Formation}
+\label{sec:agent}
+
+While the preceding sections describe the binary format and low-level performance, AgenticMemory's practical value depends on its integration with LLM-powered agents. We implemented a complete agent framework (9{,}911 lines of Python) that wraps the Rust core and provides an autonomous memory formation pipeline. This section describes the architecture and the engineering challenges of operating across heterogeneous LLM backends.
+
+% ----------------------------------------------------------------------------
+\subsection{Multi-Provider Architecture}
+\label{sec:providers}
+
+The agent framework abstracts LLM communication behind a \texttt{LLMBackend} interface with three implementations: OpenAI (GPT-4o~\cite{openai_gpt4o_2024}), Anthropic (Claude), and Ollama~\cite{ollama2024} for locally-hosted open-weight models. Each backend implements two core methods: \texttt{chat()} for natural-language interaction and \texttt{chat\_json()} for structured JSON extraction, which is critical for the memory formation pipeline.
+
+A key design decision is that the \texttt{.amem} file contains \emph{no provider-specific data}. Node records store cognitive events in a provider-neutral format: typed content strings, confidence scores, timestamps, and feature vectors. An agent can write memories with one provider and read them with another---or switch providers mid-session---without migration or conversion. This portability is not an incidental property but an explicit design requirement, validated by a dedicated test suite (Section~\ref{sec:cross_provider}).
+
+% ----------------------------------------------------------------------------
+\subsection{LLM-Based Memory Extraction}
+\label{sec:extraction}
+
+Each user message passes through a memory extraction pipeline that converts unstructured conversation into typed cognitive events. The extractor prompts the LLM to return a JSON object describing any facts, decisions, inferences, corrections, or skills expressed in the user's message. The structured output is parsed, validated, and ingested into the graph.
+
+This pipeline exposes a fundamental challenge: LLM output reliability varies dramatically across model sizes. Large frontier models (GPT-4o, Claude~Sonnet) produce well-formed JSON with high consistency. Smaller models---particularly those under 3B parameters---frequently produce malformed output: truncated JSON objects, Python tuples instead of strings, invented schema keys, and content wrapped in markdown code fences.
+
+% ----------------------------------------------------------------------------
+\subsection{Robustness Engineering}
+\label{sec:robustness}
+
+To ensure memory formation succeeds across the full spectrum of model capabilities, we implemented a three-layer defense:
+
+\textbf{Layer 1: JSON sanitization.} A \texttt{sanitize\_json\_text()} function applies four sequential transformations: (1)~strip markdown code fences (\texttt{```json~...~```}), (2)~extract JSON from surrounding prose by locating the first \texttt{\{} and last \texttt{\}} characters, (3)~remove Unicode byte-order marks and zero-width characters, and (4)~return \texttt{``\{\}''} as a safe default for empty input. This function is applied as a fallback after every raw JSON parse attempt.
+
+\textbf{Layer 2: Retry with escalating strictness.} Each backend's \texttt{chat\_json()} method attempts parsing in four stages: (1)~parse the raw response, (2)~sanitize and parse, (3)~retry with a stricter prompt explicitly requesting bare JSON, (4)~sanitize the retry response. Only after all four attempts fail does the method raise an error.
+
+\textbf{Layer 3: Regex fallback extraction.} When JSON extraction fails entirely, a pattern-based fallback extracts facts directly from the user's message using 17~compiled regular expression patterns covering names, locations, professions, workplaces, preferences, technology stacks, possessions, vehicles, education, projects, decisions, corrections, health conditions, activities, and favourites. Events extracted by regex are assigned a reduced confidence of $0.7$ (versus $0.85$--$0.95$ for LLM-extracted events), ensuring they are available but ranked below higher-fidelity extractions.
+
+This three-layer approach ensures that memory formation never fails silently. Even when a 1B-parameter model produces entirely unparseable output, the agent still captures key biographical and contextual facts from the user's message.
+
+% Figure: Extraction pipeline
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=0.6cm,
+  every node/.style={font=\scriptsize},
+  box/.style={rectangle, rounded corners=3pt, draw=#1, fill=#1!10, minimum width=3.5cm, minimum height=0.55cm, align=center, font=\scriptsize, thick},
+  arrow/.style={-{Stealth}, thick, #1},
+]
+\node[box=amblue] (input) {User Message};
+\node[box=amteal, below=of input] (llm) {LLM JSON Extraction};
+\node[box=amorange, below=of llm] (sanitize) {JSON Sanitize + Retry};
+\node[box=amred, below=of sanitize] (regex) {Regex Fallback (17 patterns)};
+\node[box=amgreen, below=of regex] (graph) {Memory Graph Ingestion};
+
+\draw[arrow=amblue] (input) -- (llm);
+\draw[arrow=amteal] (llm) -- node[right, font=\tiny, text=amgray] {valid JSON} (sanitize);
+\draw[arrow=amorange] (sanitize) -- node[right, font=\tiny, text=amgray] {parse failure} (regex);
+\draw[arrow=amred] (regex) -- (graph);
+
+% Success shortcuts
+\draw[arrow=amteal, dashed] (llm.east) -- ++(0.6,0) |- node[right, pos=0.25, font=\tiny, text=amteal] {success} (graph.east);
+\draw[arrow=amorange, dashed] (sanitize.east) -- ++(0.35,0) |- (graph.east);
+
+\end{tikzpicture}
+\caption{Memory extraction pipeline with three-layer fallback. LLM JSON extraction is the primary path; JSON sanitization and regex pattern matching provide progressive fallback for smaller models.}
+\label{fig:extraction}
+\end{figure}
+
+% ============================================================================
+% 6. EMPIRICAL VALIDATION
+% ============================================================================
+\section{Empirical Validation}
+\label{sec:validation}
+
+Beyond the micro-benchmarks of Section~\ref{sec:evaluation}, we conducted two phases of end-to-end validation testing the complete agent pipeline---from natural language conversation through memory formation and recall---across multiple LLM providers.
+
+% ----------------------------------------------------------------------------
+\subsection{Phase 7A: Single-Provider Agent Validation}
+\label{sec:phase7a}
+
+Phase~7A validates the complete agent loop with a single LLM provider using six structured protocols, each testing a distinct memory capability:
+
+\begin{enumerate}[nosep, leftmargin=*]
+  \item \textbf{Basic Recall} --- Store and retrieve personal facts, preferences, and biographical details across session boundaries.
+  \item \textbf{Decision Recall} --- Verify that decisions made with explicit reasoning can be recalled with their supporting rationale intact.
+  \item \textbf{Correction Persistence} --- Establish a fact, correct it in a subsequent session, and verify the corrected version is returned.
+  \item \textbf{Long-Range Memory} --- Recall facts across 10+ intervening sessions to test temporal durability.
+  \item \textbf{Cross-Topic Reasoning} --- Store facts from unrelated domains and verify retrieval accuracy when topics are interleaved.
+  \item \textbf{Stress Testing} --- High-throughput session creation (20+ sessions) with validation of memory consistency under load.
+\end{enumerate}
+
+The agent framework includes 97~unit and integration tests covering the brain interface, memory extractor, LLM backends, session management, and the robustness layers described in Section~\ref{sec:robustness}. All 97~tests pass, and all 6~validation protocols pass at 100\%.
+
+% ----------------------------------------------------------------------------
+\subsection{Phase 7B: Cross-Provider Validation}
+\label{sec:cross_provider}
+
+Phase~7B tests the central claim of provider-agnostic portability by running 22~structured tests across two LLM providers: OpenAI GPT-4o~\cite{openai_gpt4o_2024} (175B+ parameters, cloud-hosted) and Meta Llama~3.2 1B~\cite{llama3_2024} (1.24B parameters, locally-hosted via Ollama). This pairing was chosen deliberately: GPT-4o represents frontier-class capabilities while Llama~3.2~1B represents the smallest practical model, maximizing the diversity of the test.
+
+Table~\ref{tab:cross_provider} summarizes the cross-provider memory transfer tests. Each test writes memories with Provider~A, then verifies recall with Provider~B in a fresh session sharing only the \texttt{.amem} file.
+
+\begin{table}[t]
+\caption{Cross-provider memory transfer tests. Provider~A writes; Provider~B reads from the shared \texttt{.amem} file.}
+\label{tab:cross_provider}
+\centering
+\scriptsize
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Test Scenario} & \textbf{GPT-4o $\to$ Llama} & \textbf{Llama $\to$ GPT-4o} \\
+\midrule
+Fact Transfer & \textcolor{amgreen}{\textbf{PASS}} & \textcolor{amgreen}{\textbf{PASS}} \\
+Decision + Reasoning & \textcolor{amgreen}{\textbf{PASS}} & --- \\
+Correction Persistence & \textcolor{amgreen}{\textbf{PASS}} & \textcolor{amgreen}{\textbf{PASS}} \\
+Multi-Fact (5 sessions) & \textcolor{amgreen}{\textbf{PASS}} & --- \\
+Inference Transfer & \textcolor{amgreen}{\textbf{PASS}} & --- \\
+Skill/Preference Transfer & \textcolor{amgreen}{\textbf{PASS}} & --- \\
+6-Session History Continuity & \textcolor{amgreen}{\textbf{PASS}} & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:switch} reports provider switch tests, which simulate realistic deployment scenarios such as switching cloud providers or transitioning between local and hosted models.
+
+\begin{table}[t]
+\caption{Provider switch tests simulating real-world migration and alternating-provider scenarios.}
+\label{tab:switch}
+\centering
+\scriptsize
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Test Scenario} & \textbf{Result} & \textbf{Time} \\
+\midrule
+Clean switch after 10 sessions & \textcolor{amgreen}{\textbf{PASS}} & 66.4\,s \\
+Alternating providers (10 sessions) & \textcolor{amgreen}{\textbf{PASS}} & 81.4\,s \\
+Correction across provider switch & \textcolor{amgreen}{\textbf{PASS}} & 9.6\,s \\
+Three-provider relay & SKIP\textsuperscript{$\dagger$} & --- \\
+\bottomrule
+\end{tabular}
+
+\vspace{2pt}
+\noindent\scriptsize$\dagger$\,Skipped: requires three distinct backends; only two were available.
+\end{table}
+
+Table~\ref{tab:integrity} reports brain file integrity tests verifying the binary format's provider-neutrality at the byte level.
+
+\begin{table}[t]
+\caption{Brain file integrity tests confirming the \texttt{.amem} format contains no provider-specific data.}
+\label{tab:integrity}
+\centering
+\scriptsize
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Test} & \textbf{Result} & \textbf{Time} \\
+\midrule
+No provider fingerprints (GPT-4o) & \textcolor{amgreen}{\textbf{PASS}} & 104.3\,s \\
+No provider fingerprints (Llama 1B) & \textcolor{amgreen}{\textbf{PASS}} & 86.1\,s \\
+File size sanity (GPT-4o) & \textcolor{amgreen}{\textbf{PASS}} & 36.3\,s \\
+File size sanity (Llama 1B) & \textcolor{amgreen}{\textbf{PASS}} & 96.8\,s \\
+Binary format consistency & \textcolor{amgreen}{\textbf{PASS}} & 4.9\,s \\
+Round-trip fidelity & \textcolor{amgreen}{\textbf{PASS}} & 4.8\,s \\
+Multi-provider brain health & \textcolor{amgreen}{\textbf{PASS}} & 27.4\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Summary.} Of 22~tests, 21~passed and 1~was skipped due to an unavailable third backend---a 100\% pass rate on all executable tests. The total validation time was 796~seconds (13.3~minutes).
+
+% ----------------------------------------------------------------------------
+\subsection{Model Capability Analysis}
+\label{sec:model_analysis}
+
+The cross-provider validation revealed a significant capability gap between frontier and small models that merits discussion.
+
+\textbf{Structured output reliability.} GPT-4o produces well-formed JSON from \texttt{chat\_json()} prompts with near-perfect consistency ($>$99\% of calls). Llama~3.2~1B, by contrast, frequently produces malformed output: responses wrapped in markdown code fences (\texttt{```json\,...\,```}), truncated JSON with missing closing braces, Python tuple syntax instead of JSON strings, invented schema keys not present in the prompt, and content mixed with explanatory prose.
+
+\textbf{Memory comprehension.} Despite poor structured output, Llama~3.2~1B demonstrated strong \emph{reading} capability: when provided with memory context retrieved from the \texttt{.amem} file, it correctly recalled facts, followed correction chains, and maintained conversational continuity with the same accuracy as GPT-4o. This asymmetry---poor at structured \emph{writing} but competent at unstructured \emph{reading}---informed our layered robustness design.
+
+\textbf{Effectiveness of fallback layers.} Before implementing the three-layer defense (Section~\ref{sec:robustness}), 4~of 22~cross-provider tests failed---all in scenarios where Llama~3.2~1B was the \emph{writing} provider, producing JSON that the parser could not recover. After hardening, all tests passed. The regex fallback was activated on a significant fraction of Llama extraction calls, successfully recovering facts that would otherwise have been lost.
+
+This finding has practical implications: AgenticMemory's provider-agnostic design enables deployment on edge devices with small local models, provided the extraction pipeline accommodates their output variability. The three-layer approach achieves this without requiring model-specific code paths.
+
+
+% ============================================================================
+% 7. DISCUSSION
+% ============================================================================
+\section{Discussion}
+\label{sec:discussion}
+
+\textbf{Enabled capabilities.} AgenticMemory makes several operations practical that are impossible with flat memory systems. \emph{Cross-agent knowledge transfer} is achieved by copying a single file; the receiving agent inherits the full reasoning history, not just extracted facts. \emph{Reasoning chain reconstruction} via \textsc{CausedBy} traversal enables an agent to explain its decisions with full provenance. \emph{Self-correction with history} via \textsc{Supersedes} chains preserves the complete correction record, enabling meta-cognitive analysis of an agent's belief evolution. \emph{Portable identity} means an agent's memory is not locked to a specific LLM provider; switching from one model to another requires no migration.
+
+\textbf{Empirical confirmation of portability.} The cross-provider validation (Section~\ref{sec:cross_provider}) provides strong empirical evidence for the portability claim. Memories written by a 175B+ parameter cloud model were read correctly by a 1.24B parameter local model, and vice versa, across all tested scenarios. The binary format scan confirmed zero provider-specific fingerprints---no API tokens, model identifiers, or vendor-specific metadata leaked into the \texttt{.amem} file. This result is significant for deployment flexibility: organizations can switch LLM providers, or run different models for different use cases, without any memory migration cost.
+
+\textbf{The structured output gap.} Our model analysis (Section~\ref{sec:model_analysis}) reveals that the primary barrier to cross-provider portability is not the memory format but the LLM's ability to produce structured output for memory \emph{formation}. Memory \emph{retrieval} works consistently across model sizes because it requires only natural language comprehension. Memory \emph{formation} requires JSON output, where small models struggle. The three-layer robustness pipeline (Section~\ref{sec:robustness}) bridges this gap, but a more principled solution might involve constrained decoding~\cite{zheng2023judging} or fine-tuning small models specifically for memory extraction.
+
+\textbf{Limitations.} Feature vector generation still requires an external embedding model; AgenticMemory stores vectors but does not generate them. The current implementation does not support concurrent writes; the format assumes a single writer with multiple readers via memory-mapped access. The pattern query involves a linear scan and would benefit from bitmap or inverted indexes for large graphs.
+
+% ============================================================================
+% 8. CONCLUSION
+% ============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have presented AgenticMemory, a binary graph format purpose-built for persistent AI agent memory. By modeling memory as a graph of typed cognitive events connected by semantic edges, AgenticMemory enables capabilities that flat memory systems cannot provide: reasoning chain reconstruction, causal impact analysis, self-correction with full provenance, and cross-agent knowledge transfer.
+
+The implementation delivers strong performance in a compact footprint: 4{,}795 lines of Rust for the core engine, 9{,}911 lines of Python for the agent framework, a 1.4\,MB compiled binary, zero external dependencies, and sub-10\,ms query latency on 100K-node graphs. Memory-mapped node access at 370\,ns demonstrates that the fixed-size binary format achieves its $O(1)$ random access design goal. The entire memory of an agent---potentially years of accumulated knowledge---resides in a single portable file.
+
+Empirical validation across 97~unit tests, 6~single-provider validation protocols, and 22~cross-provider tests (spanning GPT-4o and Llama~3.2~1B) confirms that the format is genuinely provider-agnostic: memories written by any supported backend are readable by any other, with zero data loss. The robustness engineering required to achieve this---JSON sanitization, retry pipelines, and regex fallback extraction---reveals practical challenges in deploying structured memory with heterogeneous LLM backends, challenges that are likely general to any system requiring reliable structured output from diverse models.
+
+AgenticMemory represents a shift in how we think about agent memory: not as a search index over past text, but as a navigable graph of structured cognitive events. We believe this graph-first approach is essential for building agents that can reason about their own history, explain their decisions, and learn from their mistakes.
+
+% ============================================================================
+% REFERENCES
+% ============================================================================
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

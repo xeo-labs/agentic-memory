@@ -1,0 +1,73 @@
+# Rust
+target/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.whl
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.fleet/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.tox/
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Planning docs / AI prompts (internal only)
+planning-docs/
+CLAUDE-CODE-INSTRUCTIONS*.md
+SPEC-*.md
+
+# Claude Code
+.claude/
+
+# Root-level paper files (canonical copies are in paper/)
+/agenticmemory-paper.*
+/references.bib
+
+# FFI (build artifacts)
+/ffi/
+
+# Scripts (internal tooling)
+/agent/scripts/
+/installer/scripts/
+
+# Environment
+.env
+.env.local
+*.pem
+*.key

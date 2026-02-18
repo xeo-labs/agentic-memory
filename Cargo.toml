@@ -1,0 +1,50 @@
+[package]
+name = "agentic-memory"
+version = "0.1.0"
+edition = "2021"
+description = "Binary graph-based memory system for AI agents"
+license = "MIT"
+readme = "README.md"
+
+[lib]
+name = "agentic_memory"
+path = "src/lib.rs"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "amem"
+path = "src/bin/amem.rs"
+
+[dependencies]
+# Compression
+lz4_flex = "0.11"              # Pure Rust LZ4 compression (no C dependency)
+
+# Error handling
+thiserror = "2"                # Derive macro for error types
+
+# Logging
+log = "0.4"                    # Logging facade
+
+# CLI
+clap = { version = "4", features = ["derive"] }  # CLI argument parsing
+
+# Serialization (for CLI JSON output only, NOT for .amem format)
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Memory mapping
+memmap2 = "0.9"                # Cross-platform mmap
+
+# Timestamp
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+
+[dev-dependencies]
+# Testing
+criterion = { version = "0.5", features = ["html_reports"] }
+tempfile = "3"                 # Temporary files for tests
+rand = "0.8"                   # Random data generation for tests
+env_logger = "0.11"            # Logger for tests
+
+[[bench]]
+name = "benchmarks"
+harness = false

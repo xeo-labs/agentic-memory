@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="450" viewBox="0 0 700 450">
+  <defs>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#3B82F6" opacity="0.7"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#22C55E" opacity="0.7"/>
+    </marker>
+    <marker id="arrowOrange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#F59E0B" opacity="0.7"/>
+    </marker>
+    <marker id="arrowPurple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#8B5CF6" opacity="0.7"/>
+    </marker>
+    <marker id="arrowTeal" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#14B8A6" opacity="0.7"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="700" height="450" fill="#1E293B" rx="10"/>
+
+  <!-- Title -->
+  <text x="350" y="30" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#F8FAFC">Knowledge Graph Visualization</text>
+
+  <!-- Legend -->
+  <circle cx="40" cy="435" r="5" fill="#3B82F6"/><text x="50" y="439" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#94A3B8">Fact</text>
+  <circle cx="110" cy="435" r="5" fill="#22C55E"/><text x="120" y="439" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#94A3B8">Decision</text>
+  <circle cx="195" cy="435" r="5" fill="#F59E0B"/><text x="205" y="439" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#94A3B8">Correction</text>
+  <circle cx="290" cy="435" r="5" fill="#8B5CF6"/><text x="300" y="439" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#94A3B8">Inference</text>
+  <circle cx="375" cy="435" r="5" fill="#14B8A6"/><text x="385" y="439" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#94A3B8">Episode</text>
+
+  <!-- ===== EDGES (drawn first so nodes overlap them) ===== -->
+
+  <!-- SUPERSEDES chain: "Lives in Toronto" -> "Updated location" -> "Moved to Vancouver" -->
+  <!-- Fact1 (Lives in Toronto) -> Correction (Updated location) : supersedes -->
+  <line x1="218" y1="150" x2="350" y2="188" stroke="#F59E0B" stroke-width="2" marker-end="url(#arrowOrange)" opacity="0.8"/>
+  <text x="270" y="162" font-family="Arial, Helvetica, sans-serif" font-size="9" fill="#F59E0B" transform="rotate(12 270 162)">supersedes</text>
+
+  <!-- Correction (Updated location) -> Fact3 (Moved to Vancouver) : supersedes -->
+  <line x1="430" y1="195" x2="530" y2="150" stroke="#F59E0B" stroke-width="2" marker-end="url(#arrowOrange)" opacity="0.8"/>
+  <text x="470" y="166" font-family="Arial, Helvetica, sans-serif" font-size="9" fill="#F59E0B" transform="rotate(-14 470 166)">supersedes</text>
+
+  <!-- "Rust developer" -> "Recommended tokio" : supports -->
+  <line x1="140" y1="100" x2="200" y2="265" stroke="#22C55E" stroke-width="1.5" marker-end="url(#arrowGreen)" opacity="0.6"/>
+  <text x="148" y="185" font-family="Arial, Helvetica, sans-serif" font-size="9" fill="#22C55E" transform="rotate(70 148 185)">supports</text>
+
+  <!-- "Rust developer" -> "Likely systems architect" : caused_by -->
+  <line x1="160" y1="85" x2="380" y2="315" stroke="#8B5CF6" stroke-width="1.5" marker-end="url(#arrowPurple)" opacity="0.6"/>
+  <text x="250" y="195" font-family="Arial, Helvetica, sans-serif" font-size="9" fill="#8B5CF6" transform="rotate(40 250 195)">caused_by</text>
+
+  <!-- "Chose PostgreSQL" -> "Recommended tokio" : supports -->
+  <line x1="380" y1="290" x2="260" y2="280" stroke="#22C55E" stroke-width="1.5" marker-end="url(#arrowGreen)" opacity="0.5"/>
+  <text x="315" y="278" font-family="Arial, Helvetica, sans-serif" font-size="9" fill="#22C55E">supports</text>
+
+  <!-- "Session 1 summary" -> "Rust developer" : caused_by -->
+  <line x1="545" y1="360" x2="155" y2="100" stroke="#14B8A6" stroke-width="1.5" marker-end="url(#arrowTeal)" opacity="0.4"/>
+  <text x="370" y="220" font-family="Arial, Helvetica, sans-serif" font-size="9" fill="#14B8A6" transform="rotate(-33 370 220)">caused_by</text>
+
+  <!-- "Moved to Vancouver" -> "Lives in Toronto" : supersedes (strikethrough-style) -->
+  <!-- Already shown in the chain above -->
+
+  <!-- "Likely systems architect" -> "Chose PostgreSQL" : supports -->
+  <line x1="420" y1="325" x2="410" y2="298" stroke="#8B5CF6" stroke-width="1.5" marker-end="url(#arrowPurple)" opacity="0.5"/>
+  <text x="430" y="312" font-family="Arial, Helvetica, sans-serif" font-size="9" fill="#8B5CF6">supports</text>
+
+  <!-- ===== NODES ===== -->
+
+  <!-- FACTS (Blue #3B82F6) -->
+  <!-- Fact: "User is a Rust developer" -->
+  <rect x="50" y="65" width="185" height="36" rx="8" fill="#0F172A" stroke="#3B82F6" stroke-width="1.5"/>
+  <circle cx="62" cy="83" r="4" fill="#3B82F6"/>
+  <text x="72" y="80" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#3B82F6" font-weight="600">FACT</text>
+  <text x="72" y="93" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#F8FAFC">User is a Rust developer</text>
+
+  <!-- Fact: "Lives in Toronto" (old, struck) -->
+  <rect x="70" y="130" width="160" height="36" rx="8" fill="#0F172A" stroke="#3B82F6" stroke-width="1.5" opacity="0.5"/>
+  <circle cx="82" cy="148" r="4" fill="#3B82F6" opacity="0.5"/>
+  <text x="92" y="145" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#3B82F6" opacity="0.5" font-weight="600">FACT</text>
+  <text x="92" y="158" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#F8FAFC" opacity="0.5" text-decoration="line-through">Lives in Toronto</text>
+  <!-- Strikethrough line -->
+  <line x1="92" y1="155" x2="192" y2="155" stroke="#F59E0B" stroke-width="1" opacity="0.7"/>
+
+  <!-- Fact: "Moved to Vancouver" (new) -->
+  <rect x="490" y="120" width="180" height="36" rx="8" fill="#0F172A" stroke="#3B82F6" stroke-width="2"/>
+  <circle cx="502" cy="138" r="4" fill="#3B82F6"/>
+  <text x="512" y="135" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#3B82F6" font-weight="600">FACT</text>
+  <text x="512" y="148" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#F8FAFC">Moved to Vancouver</text>
+
+  <!-- CORRECTION (Orange #F59E0B) -->
+  <rect x="300" y="178" width="165" height="36" rx="8" fill="#0F172A" stroke="#F59E0B" stroke-width="1.5"/>
+  <circle cx="312" cy="196" r="4" fill="#F59E0B"/>
+  <text x="322" y="193" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#F59E0B" font-weight="600">CORRECTION</text>
+  <text x="322" y="206" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#F8FAFC">Updated location</text>
+
+  <!-- DECISIONS (Green #22C55E) -->
+  <!-- Decision: "Recommended tokio" -->
+  <rect x="120" y="258" width="175" height="36" rx="8" fill="#0F172A" stroke="#22C55E" stroke-width="1.5"/>
+  <circle cx="132" cy="276" r="4" fill="#22C55E"/>
+  <text x="142" y="273" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#22C55E" font-weight="600">DECISION</text>
+  <text x="142" y="286" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#F8FAFC">Recommended tokio</text>
+
+  <!-- Decision: "Chose PostgreSQL" -->
+  <rect x="340" y="268" width="170" height="36" rx="8" fill="#0F172A" stroke="#22C55E" stroke-width="1.5"/>
+  <circle cx="352" cy="286" r="4" fill="#22C55E"/>
+  <text x="362" y="283" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#22C55E" font-weight="600">DECISION</text>
+  <text x="362" y="296" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#F8FAFC">Chose PostgreSQL</text>
+
+  <!-- INFERENCE (Purple #8B5CF6) -->
+  <rect x="310" y="320" width="195" height="36" rx="8" fill="#0F172A" stroke="#8B5CF6" stroke-width="1.5"/>
+  <circle cx="322" cy="338" r="4" fill="#8B5CF6"/>
+  <text x="332" y="335" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#8B5CF6" font-weight="600">INFERENCE</text>
+  <text x="332" y="348" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#F8FAFC">Likely systems architect</text>
+
+  <!-- EPISODE (Teal #14B8A6) -->
+  <rect x="480" y="345" width="180" height="36" rx="8" fill="#0F172A" stroke="#14B8A6" stroke-width="1.5"/>
+  <circle cx="492" cy="363" r="4" fill="#14B8A6"/>
+  <text x="502" y="360" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#14B8A6" font-weight="600">EPISODE</text>
+  <text x="502" y="373" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#F8FAFC">Session 1 summary</text>
+
+  <!-- Additional fact nodes for richness -->
+  <!-- Fact: extra node top-right -->
+  <rect x="520" y="60" width="150" height="36" rx="8" fill="#0F172A" stroke="#3B82F6" stroke-width="1" opacity="0.5"/>
+  <circle cx="532" cy="78" r="4" fill="#3B82F6" opacity="0.5"/>
+  <text x="542" y="75" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#3B82F6" opacity="0.5" font-weight="600">FACT</text>
+  <text x="542" y="88" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#F8FAFC" opacity="0.5">Prefers vim editor</text>
+
+  <!-- Extra decision -->
+  <rect x="30" y="340" width="170" height="36" rx="8" fill="#0F172A" stroke="#22C55E" stroke-width="1" opacity="0.5"/>
+  <circle cx="42" cy="358" r="4" fill="#22C55E" opacity="0.5"/>
+  <text x="52" y="355" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#22C55E" opacity="0.5" font-weight="600">DECISION</text>
+  <text x="52" y="368" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#F8FAFC" opacity="0.5">Use async runtime</text>
+
+  <!-- Extra inference -->
+  <rect x="50" y="185" width="185" height="36" rx="8" fill="#0F172A" stroke="#8B5CF6" stroke-width="1" opacity="0.4"/>
+  <circle cx="62" cy="203" r="4" fill="#8B5CF6" opacity="0.4"/>
+  <text x="72" y="200" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#8B5CF6" opacity="0.4" font-weight="600">INFERENCE</text>
+  <text x="72" y="213" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#F8FAFC" opacity="0.4">Backend-focused dev</text>
+
+  <!-- Extra episode -->
+  <rect x="530" y="250" width="155" height="36" rx="8" fill="#0F172A" stroke="#14B8A6" stroke-width="1" opacity="0.4"/>
+  <circle cx="542" cy="268" r="4" fill="#14B8A6" opacity="0.4"/>
+  <text x="552" y="265" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#14B8A6" opacity="0.4" font-weight="600">EPISODE</text>
+  <text x="552" y="278" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#F8FAFC" opacity="0.4">Session 2 summary</text>
+
+  <!-- Supersedes chain highlight box -->
+  <rect x="55" y="118" width="630" height="108" rx="10" fill="none" stroke="#F59E0B" stroke-width="1" stroke-dasharray="4 3" opacity="0.3"/>
+  <text x="595" y="218" font-family="Arial, Helvetica, sans-serif" font-size="9" fill="#F59E0B" opacity="0.6">SUPERSEDES chain</text>
+</svg>

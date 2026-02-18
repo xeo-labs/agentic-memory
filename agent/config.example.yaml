@@ -1,0 +1,39 @@
+# AgenticMemory Agent Configuration
+# Copy to ~/.amem/config.yaml and customize
+
+# LLM Backend: anthropic, openai, or ollama
+backend: anthropic
+model: null  # Uses default per backend if null
+
+# API Keys (can also be set via environment variables)
+# ANTHROPIC_API_KEY, OPENAI_API_KEY
+anthropic_api_key: null
+openai_api_key: null
+
+# Ollama settings
+ollama_url: http://localhost:11434
+ollama_model: llama3.2
+
+# Brain settings
+brain_path: ~/.amem/brain.amem
+amem_binary: amem  # Path to amem CLI binary
+
+# Memory settings
+memory:
+  enabled: true
+  max_context_tokens: 2000
+  extract_events: true
+  generate_embeddings: true
+  compress_on_exit: true
+
+# Agent settings
+agent:
+  name: "Amem Agent"
+  max_history: 5
+  system_prompt: null  # Uses default if null
+
+# Display settings
+display:
+  show_memory_stats: true
+  show_extraction: false
+  color_theme: default

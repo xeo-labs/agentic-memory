@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="320" viewBox="0 0 700 320">
+  <!-- Background -->
+  <rect width="700" height="320" fill="#0F172A" rx="10"/>
+
+  <!-- Title -->
+  <text x="350" y="35" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#F8FAFC">Performance (100K node graph)</text>
+  <text x="350" y="52" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#94A3B8">Lower is better</text>
+
+  <!-- Chart area: x=180..660, y=70..280 -->
+  <!-- Max bar width = 480px for 32.6ms -->
+  <!-- Scale: 480px / 32.6ms = 14.72px per ms -->
+
+  <!-- Row 1: Add node: 276 ns -->
+  <text x="170" y="92" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#F8FAFC">Add node</text>
+  <rect x="180" y="78" width="4" height="22" rx="3" fill="#3B82F6"/>
+  <rect x="180" y="78" width="4" height="22" rx="3" fill="#60A5FA" opacity="0.3"/>
+  <text x="192" y="94" font-family="monospace" font-size="12" fill="#60A5FA" font-weight="600">276 ns</text>
+
+  <!-- Row 2: Add edge: 1.2 ms -->
+  <text x="170" y="132" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#F8FAFC">Add edge</text>
+  <rect x="180" y="118" width="18" height="22" rx="3" fill="#3B82F6"/>
+  <rect x="180" y="118" width="18" height="22" rx="3" fill="#60A5FA" opacity="0.2"/>
+  <text x="206" y="134" font-family="monospace" font-size="12" fill="#60A5FA" font-weight="600">1.2 ms</text>
+
+  <!-- Row 3: Traverse depth-5: 3.4 ms -->
+  <text x="170" y="172" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#F8FAFC">Traverse depth-5</text>
+  <rect x="180" y="158" width="50" height="22" rx="3" fill="#3B82F6"/>
+  <rect x="180" y="158" width="50" height="22" rx="3" fill="#60A5FA" opacity="0.15"/>
+  <text x="238" y="174" font-family="monospace" font-size="12" fill="#60A5FA" font-weight="600">3.4 ms</text>
+
+  <!-- Row 4: Similarity search: 9.0 ms -->
+  <text x="170" y="212" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#F8FAFC">Similarity search</text>
+  <rect x="180" y="198" width="132" height="22" rx="3" fill="#3B82F6"/>
+  <rect x="180" y="198" width="132" height="22" rx="3" fill="#60A5FA" opacity="0.1"/>
+  <text x="320" y="214" font-family="monospace" font-size="12" fill="#60A5FA" font-weight="600">9.0 ms</text>
+
+  <!-- Row 5: Write 10K to file: 32.6 ms (longest) -->
+  <text x="170" y="252" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#F8FAFC">Write 10K to file</text>
+  <rect x="180" y="238" width="480" height="22" rx="3" fill="#3B82F6"/>
+  <rect x="180" y="238" width="480" height="22" rx="3" fill="#60A5FA" opacity="0.08"/>
+  <text x="550" y="254" font-family="monospace" font-size="12" fill="#DBEAFE" font-weight="600">32.6 ms</text>
+
+  <!-- Row 6: Read 10K from file: 3.7 ms -->
+  <text x="170" y="292" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#F8FAFC">Read 10K from file</text>
+  <rect x="180" y="278" width="55" height="22" rx="3" fill="#3B82F6"/>
+  <rect x="180" y="278" width="55" height="22" rx="3" fill="#60A5FA" opacity="0.15"/>
+  <text x="243" y="294" font-family="monospace" font-size="12" fill="#60A5FA" font-weight="600">3.7 ms</text>
+
+  <!-- Baseline axis line -->
+  <line x1="180" y1="68" x2="180" y2="300" stroke="#94A3B8" stroke-width="1" opacity="0.2"/>
+</svg>
