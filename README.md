@@ -8,6 +8,10 @@
 </p>
 
 <p align="center">
+  <em>A lifetime of AI memory — every question, every answer, every decision — fits in a single file under 1 GB.</em>
+</p>
+
+<p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/pip_install-agentic--memory-3B82F6?style=for-the-badge&logo=python&logoColor=white" alt="pip install"></a>
   <a href="#install"><img src="https://img.shields.io/badge/cargo_install-amem-F59E0B?style=for-the-badge&logo=rust&logoColor=white" alt="cargo install"></a>
   <a href="https://github.com/agentic-revolution/agentic-memory/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge" alt="MIT License"></a>
