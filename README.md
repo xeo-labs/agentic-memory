@@ -332,20 +332,6 @@ Plus: 10 criterion benchmarks, a research paper with 7 figures and 6 tables, and
 
 ---
 
-## The Ecosystem
-
-AgenticMemory is the foundation. What comes next:
-
-| Component | What it does | Status |
-|:---|:---|:---:|
-| **AgenticMemory** | Portable brain for AI agents | ✅ Shipping |
-| **AgenticCodebase** | Dependency graphs for entire codebases | 🔜 Next |
-| **AgenticIdentity** | Trust & delegation for agent-to-agent auth | 📋 Planned |
-| **AgenticContract** | Natural language contracts with machine enforcement | 📋 Planned |
-| **AgenticOS** | Ambient intelligence layer for your OS | 📋 Planned |
-
----
-
 ## Contributing
 
 We welcome contributions. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
