@@ -398,7 +398,7 @@ def main() -> int:
     install_parser.add_argument("--auto", action="store_true", default=True, help="Auto-detect and configure")
     install_parser.add_argument("--only", help="Only configure these tools (comma-separated IDs)")
     install_parser.add_argument("--skip", help="Skip these tools (comma-separated IDs)")
-    install_parser.add_argument("--brain", help="Brain file path (default: ~/.amem/brain.amem)")
+    install_parser.add_argument("--brain", help="Brain file path (default: ~/.brain.amem)")
     install_parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
     install_parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation")
     install_parser.add_argument("--verbose", "-v", action="store_true")

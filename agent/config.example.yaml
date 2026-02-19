@@ -15,7 +15,7 @@ ollama_url: http://localhost:11434
 ollama_model: llama3.2
 
 # Brain settings
-brain_path: ~/.amem/brain.amem
+brain_path: ~/.brain.amem
 amem_binary: amem  # Path to amem CLI binary
 
 # Memory settings

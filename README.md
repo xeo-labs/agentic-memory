@@ -190,35 +190,41 @@ report = brain.drift("preferred language")
 
 ## Install
 
-**Python** (recommended):
+**One-liner** (downloads binary + configures Claude):
 ```bash
-pip install agentic-brain
+curl -fsSL https://raw.githubusercontent.com/xeo-labs/agentic-memory/main/scripts/install.sh | bash
 ```
 
-> **Note:** The Python SDK requires the `amem` Rust binary. Install it via `cargo install agentic-memory` below, or see [INSTALL.md](INSTALL.md) for alternatives.
+Downloads a pre-built `agentic-memory-mcp` binary to `~/.local/bin/` and merges the MCP server into your Claude Desktop and Claude Code configs. Memory defaults to `~/.brain.amem`. Requires `curl` and `jq`.
 
-**With LLM providers:**
+| Goal | Command |
+|:---|:---|
+| **Just give me memory** | Run the one-liner above |
+| **Python developer** | `pip install agentic-brain` |
+| **Rust developer** | `cargo install agentic-memory-mcp` |
+| **Connect all AI tools** | `pip install amem-installer && amem-install install --auto` |
+
+<details>
+<summary><strong>Detailed install options</strong></summary>
+
+<br>
+
+**Python SDK** (requires `amem` Rust binary -- see [INSTALL.md](INSTALL.md)):
 ```bash
+pip install agentic-brain
 pip install agentic-brain[anthropic]   # Claude
 pip install agentic-brain[openai]      # GPT
 pip install agentic-brain[ollama]      # Local models
 pip install agentic-brain[all]         # Everything
 ```
 
-**Rust CLI** (required for Python SDK):
+**Rust:**
 ```bash
-cargo install agentic-memory
+cargo install agentic-memory           # Core CLI (amem)
+cargo install agentic-memory-mcp       # MCP server
 ```
 
-**One-command auto-install** (connects all AI tools on your machine):
-```bash
-pip install amem-installer
-amem-install install --auto
-```
-
-> **Warning:** Do not use `/tmp` for memory files -- macOS clears this directory periodically. Use `~/.brain.amem` or another persistent location.
-
-Detects Claude Code, Cursor, Windsurf, Continue, Ollama -- configures them all to share one brain. [Details ->](INSTALL.md)
+</details>
 
 <p align="center">
   <img src="assets/cli-demo.svg" alt="CLI demo showing brain operations" width="780">
@@ -245,11 +251,21 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "~/.brain.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }
 ```
+
+> Zero-config: defaults to `~/.brain.amem`. Override with `"args": ["--memory", "/path/to/brain.amem", "serve"]`.
+
+**Memory modes** — control how aggressively Claude saves:
+
+| Mode | Behavior | Config |
+|:---|:---|:---|
+| **smart** (default) | Auto-saves facts, decisions, preferences | `["serve"]` |
+| **minimal** | Only saves when you say "remember" | `["serve", "--mode", "minimal"]` |
+| **full** | Saves everything, creates session summaries | `["serve", "--mode", "full"]` |
 
 ### Configure VS Code / Cursor
 
@@ -260,13 +276,11 @@ Add to `.vscode/settings.json`:
   "mcp.servers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "${workspaceFolder}/.memory/project.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }
 ```
-
-> **Do not use `/tmp` for memory files** — macOS and Linux clear this directory periodically. Use `~/.brain.amem` for persistent storage.
 
 ### What the LLM gets
 
@@ -478,9 +492,9 @@ Configure Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_c
 ```json
 {
   "mcpServers": {
-    "memory": {
+    "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "~/.brain.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }

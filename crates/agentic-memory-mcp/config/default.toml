@@ -1,8 +1,8 @@
 # AgenticMemory MCP Server — Default Configuration
 
 # Path to the .amem memory file
-# Resolved in order: CLI arg > AMEM_BRAIN env > .amem/brain.amem (cwd) > ~/.agentic/memory/brain.amem
-# memory_path = "~/.agentic/memory/brain.amem"
+# Resolved in order: CLI arg > AMEM_BRAIN env > .amem/brain.amem (cwd) > ~/.brain.amem
+# memory_path = "~/.brain.amem"
 
 # Transport type: "stdio" or "sse"
 transport = "stdio"

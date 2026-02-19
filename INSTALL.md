@@ -1,6 +1,12 @@
 # Installation Guide
 
-Three ways to install AgenticMemory, depending on your use case.
+## Quick Install (one-liner)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xeo-labs/agentic-memory/main/scripts/install.sh | bash
+```
+
+Downloads a pre-built `agentic-memory-mcp` binary, installs to `~/.local/bin/`, and merges the MCP server config into Claude Desktop and Claude Code. Memory defaults to `~/.brain.amem`. Requires `curl` and `jq`.
 
 ---
 
@@ -107,11 +113,13 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "~/.brain.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }
 ```
+
+> Zero-config: defaults to `~/.brain.amem`. Override with `"args": ["--memory", "/path/to/brain.amem", "serve"]`.
 
 ### Configure VS Code / Cursor
 
@@ -122,13 +130,11 @@ Add to `.vscode/settings.json`:
   "mcp.servers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "${workspaceFolder}/.memory/project.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }
 ```
-
-> **Do not use `/tmp` for memory files** — macOS and Linux clear this directory periodically. Use `~/.brain.amem` for persistent storage.
 
 ### Verify
 
@@ -172,7 +178,7 @@ amem-install update
 ### What it does
 
 1. Scans your system for installed AI tools
-2. Creates a shared brain file at `~/.amem/brain.amem`
+2. Creates a shared brain file at `~/.brain.amem`
 3. Configures each tool to use the shared brain (via MCP servers, config files, or wrapper scripts)
 4. Backs up all modified configs before making changes
 
@@ -215,7 +221,7 @@ Will configure 5 tool(s). Proceed? [Y/n] Y
   [4/5] Windsurf             ... configured (MCP server)
   [5/5] Ollama               ... configured (wrapper script)
 
-Done! Brain file: ~/.amem/brain.amem
+Done! Brain file: ~/.brain.amem
 All 5 tools now share persistent memory.
 ```
 

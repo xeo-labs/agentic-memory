@@ -45,28 +45,52 @@ cargo build --release
 ### Run (stdio transport — default)
 
 ```bash
-agentic-memory-mcp --memory ~/.brain.amem serve
+agentic-memory-mcp serve
+```
+
+> Zero-config: defaults to `~/.brain.amem`. Override with `agentic-memory-mcp --memory /path/to/brain.amem serve`.
+
+### Memory Modes
+
+Control how aggressively Claude saves memories:
+
+```bash
+agentic-memory-mcp serve --mode minimal   # Only save when user says "remember"
+agentic-memory-mcp serve --mode smart     # Auto-save facts + decisions (default)
+agentic-memory-mcp serve --mode full      # Save everything, episode summaries
+```
+
+| Mode | Saves Per Conversation | File Growth | Best For |
+|:---|---:|---:|:---|
+| **minimal** | 1-3 | ~1 KB/day | Privacy-conscious users |
+| **smart** | 5-15 | ~5-20 KB/day | Most users (default) |
+| **full** | 15-30+ | ~20-50 KB/day | Power users, autonomous agents |
+
+Configure via the `args` array in your MCP config:
+
+```json
+{ "command": "agentic-memory-mcp", "args": ["serve", "--mode", "full"] }
 ```
 
 ### Run (SSE transport)
 
 ```bash
 cargo build --release --features sse
-agentic-memory-mcp --memory ~/.brain.amem serve-http --addr 127.0.0.1:3000
+agentic-memory-mcp serve-http --addr 127.0.0.1:3000
 ```
 
 ## Configuration with MCP Clients
 
 ### Claude Desktop
 
-Add to your Claude Desktop MCP config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "~/.brain.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }
@@ -81,7 +105,7 @@ Add to `~/.claude/mcp.json`:
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "~/.brain.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }
@@ -96,7 +120,7 @@ Add to `.vscode/settings.json`:
   "mcp.servers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "${workspaceFolder}/.memory/project.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }
@@ -111,13 +135,13 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "~/.brain.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }
 ```
 
-> **Do not use `/tmp` for memory files** — macOS and Linux clear this directory periodically. Use `~/.brain.amem` for persistent storage.
+> Zero-config: defaults to `~/.brain.amem`. Override with `"args": ["--memory", "/path/to/brain.amem", "serve"]`.
 
 ## Tools (12)
 
@@ -178,8 +202,11 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 ## CLI Commands
 
 ```bash
-# Start server (stdio)
-agentic-memory-mcp --memory ~/.brain.amem serve
+# Start server (stdio) — defaults to ~/.brain.amem
+agentic-memory-mcp serve
+
+# Start server with custom memory file
+agentic-memory-mcp --memory /path/to/brain.amem serve
 
 # Start server (SSE, requires --features sse)
 agentic-memory-mcp serve-http --addr 127.0.0.1:3000

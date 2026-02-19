@@ -6,7 +6,7 @@
   "properties": {
     "memory_path": {
       "type": "string",
-      "description": "Path to the .amem memory file. Resolved in order: CLI arg > AMEM_BRAIN env > .amem/brain.amem (cwd) > ~/.agentic/memory/brain.amem"
+      "description": "Path to the .amem memory file. Resolved in order: CLI arg > AMEM_BRAIN env > .amem/brain.amem (cwd) > ~/.brain.amem"
     },
     "transport": {
       "type": "string",

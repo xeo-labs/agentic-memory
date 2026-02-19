@@ -69,7 +69,7 @@ pub fn load_config(path: &str) -> McpResult<ServerConfig> {
 /// 1. Explicit path (CLI arg)
 /// 2. AMEM_BRAIN environment variable
 /// 3. .amem/brain.amem in current directory
-/// 4. ~/.agentic/memory/brain.amem (global)
+/// 4. ~/.brain.amem (global default)
 pub fn resolve_memory_path(explicit: Option<&str>) -> String {
     if let Some(path) = explicit {
         return path.to_string();
@@ -92,5 +92,5 @@ fn resolve_default_memory_path() -> String {
         .or_else(|_| std::env::var("USERPROFILE"))
         .unwrap_or_else(|_| ".".to_string());
 
-    format!("{home}/.agentic/memory/brain.amem")
+    format!("{home}/.brain.amem")
 }

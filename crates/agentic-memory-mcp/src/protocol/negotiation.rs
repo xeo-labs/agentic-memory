@@ -1,19 +1,40 @@
 //! MCP capability negotiation during initialization.
 
 use crate::types::{
-    ClientCapabilities, InitializeParams, InitializeResult, McpError, McpResult, MCP_VERSION,
+    ClientCapabilities, InitializeParams, InitializeResult, McpError, McpResult, MemoryMode,
+    MCP_VERSION,
 };
 
 /// Stored client capabilities after negotiation.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct NegotiatedCapabilities {
     /// The client's declared capabilities.
     pub client: ClientCapabilities,
     /// Whether the handshake is complete.
     pub initialized: bool,
+    /// Memory saving mode.
+    pub mode: MemoryMode,
+}
+
+impl Default for NegotiatedCapabilities {
+    fn default() -> Self {
+        Self {
+            client: ClientCapabilities::default(),
+            initialized: false,
+            mode: MemoryMode::Smart,
+        }
+    }
 }
 
 impl NegotiatedCapabilities {
+    /// Create with a specific memory mode.
+    pub fn with_mode(mode: MemoryMode) -> Self {
+        Self {
+            mode,
+            ..Default::default()
+        }
+    }
+
     /// Process an initialize request and return the result.
     pub fn negotiate(&mut self, params: InitializeParams) -> McpResult<InitializeResult> {
         // Verify protocol version compatibility
@@ -33,7 +54,7 @@ impl NegotiatedCapabilities {
             params.client_info.version
         );
 
-        Ok(InitializeResult::default_result())
+        Ok(InitializeResult::with_mode(self.mode))
     }
 
     /// Mark the handshake as complete (after receiving `initialized` notification).

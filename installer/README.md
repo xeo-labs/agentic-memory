@@ -46,7 +46,7 @@ amem-install update
 ## How It Works
 
 1. Scans your system for installed AI tools
-2. Creates a shared brain file at `~/.amem/brain.amem`
+2. Creates a shared brain file at `~/.brain.amem`
 3. Configures each tool to use the shared brain (via MCP, config files, or wrapper scripts)
 4. Backs up all modified configs before changes
 

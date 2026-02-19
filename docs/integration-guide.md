@@ -308,7 +308,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "~/.brain.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }
@@ -323,7 +323,7 @@ Add to `~/.claude/mcp.json`:
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "~/.brain.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }
@@ -338,7 +338,7 @@ Add to `.vscode/settings.json`:
   "mcp.servers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "${workspaceFolder}/.memory/project.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }
@@ -353,13 +353,13 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "~/.brain.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }
 ```
 
-> **Do not use `/tmp` for memory files** — macOS and Linux clear this directory periodically. Use `~/.brain.amem` for persistent storage.
+> Zero-config: defaults to `~/.brain.amem`. Override with `"args": ["--memory", "/path/to/brain.amem", "serve"]`.
 
 ### Verifying the Connection
 

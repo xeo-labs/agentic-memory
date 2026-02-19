@@ -29,6 +29,14 @@ impl ProtocolHandler {
         }
     }
 
+    /// Create a new protocol handler with a specific memory mode.
+    pub fn with_mode(session: Arc<Mutex<SessionManager>>, mode: MemoryMode) -> Self {
+        Self {
+            session,
+            capabilities: Arc::new(Mutex::new(NegotiatedCapabilities::with_mode(mode))),
+        }
+    }
+
     /// Handle an incoming JSON-RPC message and optionally return a response.
     pub async fn handle_message(&self, msg: JsonRpcMessage) -> Option<Value> {
         match msg {

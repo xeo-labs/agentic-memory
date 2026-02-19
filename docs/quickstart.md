@@ -277,11 +277,13 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "~/.brain.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }
 ```
+
+> Zero-config: defaults to `~/.brain.amem`. Override with `"args": ["--memory", "/path/to/brain.amem", "serve"]`.
 
 ### Test It
 

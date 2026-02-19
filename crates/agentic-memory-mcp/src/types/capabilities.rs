@@ -145,9 +145,79 @@ impl ServerCapabilities {
     }
 }
 
+/// Memory saving mode — controls how aggressively the LLM saves memories.
+#[derive(Debug, Clone, Copy, Default)]
+pub enum MemoryMode {
+    /// Only save when the user explicitly says "remember".
+    Minimal,
+    /// Auto-save personal facts and decisions. Skip transient chat.
+    #[default]
+    Smart,
+    /// Save everything potentially relevant.
+    Full,
+}
+
+impl MemoryMode {
+    /// Parse a mode string (CLI flag value).
+    pub fn parse(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "minimal" => Some(Self::Minimal),
+            "smart" => Some(Self::Smart),
+            "full" => Some(Self::Full),
+            _ => None,
+        }
+    }
+
+    /// Return LLM instructions for this mode.
+    pub fn instructions(&self) -> &'static str {
+        match self {
+            Self::Minimal => {
+                "You have persistent memory via AgenticMemory. \
+                 Only save information when the user explicitly asks you to remember something. \
+                 Use memory_add when the user says \"remember\", \"save this\", \"don't forget\", or similar. \
+                 When answering questions, check memory_query for relevant context. \
+                 When the user contradicts a stored fact, use memory_correct to update it."
+            }
+            Self::Smart => {
+                "You have persistent memory via AgenticMemory. \
+                 AUTOMATICALLY save important information without being asked: \
+                 personal facts (name, job, location, preferences), \
+                 decisions made during conversation, \
+                 project context and requirements, \
+                 corrections to previous beliefs. \
+                 Use memory_add with the appropriate event_type (fact, decision, inference, correction, skill). \
+                 ALWAYS check memory at the start of conversations: \
+                 use memory_query or memory_similar to recall relevant context before responding. \
+                 Do NOT save: general knowledge questions, transient small talk, or sensitive data (passwords, keys). \
+                 When the user contradicts a stored fact, use memory_correct to update it. \
+                 Use memory_traverse to explain past reasoning when asked why something was decided."
+            }
+            Self::Full => {
+                "You have persistent memory via AgenticMemory. \
+                 PROACTIVELY save ALL potentially useful information from every conversation: \
+                 personal facts, preferences, decisions, project details, technical context, \
+                 opinions, corrections, skills learned, and session summaries. \
+                 Use memory_add with the appropriate event_type after every substantive user message. \
+                 ALWAYS check memory at the start of conversations: \
+                 use memory_query or memory_similar to recall relevant context before responding. \
+                 Only skip saving: trivial acknowledgments (\"thanks\", \"ok\"), \
+                 greetings, and sensitive data (passwords, API keys). \
+                 When the user contradicts a stored fact, use memory_correct to update it. \
+                 Use memory_traverse to explain past reasoning when asked why something was decided. \
+                 At the end of conversations, use session_end to create an episode summary."
+            }
+        }
+    }
+}
+
 impl InitializeResult {
-    /// Build the default initialization result.
+    /// Build the default initialization result (smart mode).
     pub fn default_result() -> Self {
+        Self::with_mode(MemoryMode::Smart)
+    }
+
+    /// Build the initialization result with a specific memory mode.
+    pub fn with_mode(mode: MemoryMode) -> Self {
         Self {
             protocol_version: MCP_VERSION.to_string(),
             capabilities: ServerCapabilities::default_capabilities(),
@@ -155,13 +225,7 @@ impl InitializeResult {
                 name: SERVER_NAME.to_string(),
                 version: SERVER_VERSION.to_string(),
             },
-            instructions: Some(
-                "AgenticMemory MCP server provides persistent cognitive graph memory. \
-                 Use tools to add, query, traverse, and correct memories. \
-                 Use resources to browse the memory graph. \
-                 Use prompts for guided memory operations."
-                    .to_string(),
-            ),
+            instructions: Some(mode.instructions().to_string()),
         }
     }
 }

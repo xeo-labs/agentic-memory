@@ -2,7 +2,7 @@
   "mcp.servers": {
     "agentic-memory": {
       "command": "agentic-memory-mcp",
-      "args": ["--memory", "${workspaceFolder}/.memory/project.amem", "serve"]
+      "args": ["serve"]
     }
   }
 }

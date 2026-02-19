@@ -51,7 +51,7 @@ class PlatformInfo:
             data_dir = config_dir
 
         amem_dir = home / ".amem"
-        brain_path = amem_dir / "brain.amem"
+        brain_path = home / ".brain.amem"
 
         return cls(
             os=os_name,
