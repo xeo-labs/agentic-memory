@@ -1,105 +1,72 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="750" height="520" viewBox="0 0 750 520">
-  <!-- Window frame -->
-  <rect width="750" height="520" fill="#1E1E2E" rx="10"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="750" height="520" viewBox="0 0 750 520" role="img" aria-label="AgenticMemory code and terminal walkthrough">
+  <defs>
+    <pattern id="dot-grid" width="18" height="18" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="#c9c6bb"/>
+    </pattern>
+    <style><![CDATA[
+      .mono { font-family:'IBM Plex Mono','JetBrains Mono',monospace; }
+      .ink { fill:#111111; }
+      .muted { fill:#6d6a63; }
+      .signal { fill:#ea580c; }
+    ]]></style>
+  </defs>
 
-  <!-- Title bar -->
-  <rect width="750" height="36" fill="#181825" rx="10"/>
-  <rect x="0" y="26" width="750" height="10" fill="#181825"/>
+  <rect width="750" height="520" fill="#f2f1ea"/>
+  <rect width="750" height="520" fill="url(#dot-grid)"/>
 
-  <!-- Traffic light buttons -->
-  <circle cx="22" cy="18" r="6" fill="#FF5F57"/>
-  <circle cx="42" cy="18" r="6" fill="#FEBC2E"/>
-  <circle cx="62" cy="18" r="6" fill="#28C840"/>
+  <line x1="16" y1="30" x2="734" y2="30" stroke="#1f1f1f"/>
+  <text x="16" y="22" class="mono muted" font-size="10" letter-spacing="1.8">// SECTION: MEMORY_AGENT_TRACE</text>
 
-  <!-- Title text -->
-  <text x="375" y="22" text-anchor="middle" font-family="monospace" font-size="12" fill="#94A3B8">python -- agent.py</text>
+  <rect x="20" y="44" width="710" height="456" fill="#fffdf7" stroke="#1f1f1f" stroke-width="2"/>
+  <rect x="20" y="44" width="710" height="36" fill="#2a2825"/>
+  <circle cx="42" cy="62" r="5" fill="#ef4444"/>
+  <circle cx="60" cy="62" r="5" fill="#f59e0b"/>
+  <circle cx="78" cy="62" r="5" fill="#22c55e"/>
+  <text x="374" y="66" class="mono" text-anchor="middle" font-size="13" fill="#d8d4cb">python -- agent.py</text>
 
-  <!-- Line 1: import -->
-  <text x="20" y="62" font-family="monospace" font-size="13" fill="#C084FC">from</text>
-  <text x="56" y="62" font-family="monospace" font-size="13" fill="#F8FAFC"> agentic_memory </text>
-  <text x="194" y="62" font-family="monospace" font-size="13" fill="#C084FC">import</text>
-  <text x="246" y="62" font-family="monospace" font-size="13" fill="#22C55E"> Brain, MemoryAgent</text>
+  <rect x="36" y="96" width="678" height="388" fill="#101012" stroke="#1f1f1f"/>
 
-  <!-- Line 2: import provider -->
-  <text x="20" y="82" font-family="monospace" font-size="13" fill="#C084FC">from</text>
-  <text x="56" y="82" font-family="monospace" font-size="13" fill="#F8FAFC"> agentic_memory.integrations </text>
-  <text x="286" y="82" font-family="monospace" font-size="13" fill="#C084FC">import</text>
-  <text x="338" y="82" font-family="monospace" font-size="13" fill="#22C55E"> AnthropicProvider</text>
+  <text x="52" y="128" class="mono" font-size="13" fill="#b794f4">from</text>
+  <text x="88" y="128" class="mono" font-size="13" fill="#f4f2eb"> agentic_memory </text>
+  <text x="220" y="128" class="mono" font-size="13" fill="#b794f4">import</text>
+  <text x="272" y="128" class="mono" font-size="13" fill="#4ade80"> Brain, MemoryAgent</text>
 
-  <!-- Blank line -->
+  <text x="52" y="150" class="mono" font-size="13" fill="#b794f4">from</text>
+  <text x="88" y="150" class="mono" font-size="13" fill="#f4f2eb"> agentic_memory.integrations </text>
+  <text x="320" y="150" class="mono" font-size="13" fill="#b794f4">import</text>
+  <text x="372" y="150" class="mono" font-size="13" fill="#4ade80"> AnthropicProvider</text>
 
-  <!-- Line 3: brain -->
-  <text x="20" y="116" font-family="monospace" font-size="13" fill="#F8FAFC">brain = Brain(</text>
-  <text x="142" y="116" font-family="monospace" font-size="13" fill="#F59E0B">"my_agent.amem"</text>
-  <text x="263" y="116" font-family="monospace" font-size="13" fill="#F8FAFC">)</text>
+  <text x="52" y="184" class="mono" font-size="13" fill="#f4f2eb">brain = Brain(</text>
+  <text x="165" y="184" class="mono" font-size="13" fill="#fbbf24">"my_agent.amem"</text>
+  <text x="274" y="184" class="mono" font-size="13" fill="#f4f2eb">)</text>
 
-  <!-- Line 4: agent -->
-  <text x="20" y="136" font-family="monospace" font-size="13" fill="#F8FAFC">agent = MemoryAgent(brain, AnthropicProvider(), </text>
-  <text x="425" y="136" font-family="monospace" font-size="13" fill="#3B82F6">verbose=True</text>
-  <text x="528" y="136" font-family="monospace" font-size="13" fill="#F8FAFC">)</text>
+  <text x="52" y="206" class="mono" font-size="13" fill="#f4f2eb">agent = MemoryAgent(brain, AnthropicProvider(), </text>
+  <text x="458" y="206" class="mono" font-size="13" fill="#60a5fa">verbose=True</text>
+  <text x="557" y="206" class="mono" font-size="13" fill="#f4f2eb">)</text>
 
-  <!-- Blank line -->
+  <text x="52" y="238" class="mono" font-size="13" fill="#f4f2eb">AgenticMemory v0.2  my_agent.amem  47 nodes  5 sessions</text>
+  <line x1="52" y1="248" x2="694" y2="248" stroke="#3b3832"/>
 
-  <!-- Banner output -->
-  <text x="20" y="172" font-family="monospace" font-size="13" font-weight="bold" fill="#F8FAFC">AgenticMemory</text>
-  <text x="140" y="172" font-family="monospace" font-size="13" fill="#64748B"> v0.2  </text>
-  <text x="194" y="172" font-family="monospace" font-size="13" fill="#F8FAFC">&#x1F9E0; my_agent.amem  </text>
-  <text x="376" y="172" font-family="monospace" font-size="13" fill="#64748B">47 nodes &#xB7; 5 sessions</text>
+  <text x="52" y="276" class="mono" font-size="13" fill="#8f8a80"># Session 1 -- teach the agent</text>
+  <text x="52" y="298" class="mono" font-size="13" fill="#f4f2eb">agent.chat(</text>
+  <text x="126" y="298" class="mono" font-size="13" fill="#fbbf24">"My name is Marcus. I'm building a Rust compiler."</text>
+  <text x="470" y="298" class="mono" font-size="13" fill="#f4f2eb">, session=1)</text>
 
-  <!-- Separator line -->
-  <line x1="20" y1="186" x2="580" y2="186" stroke="#313244" stroke-width="1"/>
+  <text x="52" y="324" class="mono" font-size="13" fill="#22d3ee">* </text>
+  <text x="68" y="324" class="mono" font-size="13" fill="#94a3b8">No prior memories (first conversation)</text>
+  <text x="52" y="344" class="mono" font-size="13" fill="#22d3ee">* </text>
+  <text x="68" y="344" class="mono" font-size="13" fill="#94a3b8">Thinking...</text>
+  <text x="52" y="364" class="mono" font-size="13" fill="#22d3ee">* </text>
+  <text x="68" y="364" class="mono" font-size="13" fill="#4ade80">Saved 2 facts, 1 inference</text>
 
-  <!-- Blank line -->
+  <text x="52" y="390" class="mono" font-size="13" fill="#8f8a80"># Session 2 -- the agent remembers</text>
+  <text x="52" y="412" class="mono" font-size="13" fill="#f4f2eb">response = agent.chat(</text>
+  <text x="210" y="412" class="mono" font-size="13" fill="#fbbf24">"What am I working on?"</text>
+  <text x="390" y="412" class="mono" font-size="13" fill="#f4f2eb">, session=2)</text>
 
-  <!-- Session 1: teach the agent -->
-  <text x="20" y="210" font-family="monospace" font-size="13" fill="#64748B"># Session 1 -- teach the agent</text>
+  <text x="52" y="438" class="mono" font-size="13" fill="#22d3ee">* </text>
+  <text x="68" y="438" class="mono" font-size="13" fill="#94a3b8">Recalled 3 memories; saved 1 fact</text>
+  <text x="52" y="462" class="mono" font-size="13" fill="#fbbf24">"You're building a Rust compiler, Marcus."</text>
 
-  <!-- Line: agent.chat -->
-  <text x="20" y="232" font-family="monospace" font-size="13" fill="#F8FAFC">agent.chat(</text>
-  <text x="110" y="232" font-family="monospace" font-size="13" fill="#F59E0B">"My name is Marcus. I'm building a Rust compiler."</text>
-  <text x="520" y="232" font-family="monospace" font-size="13" fill="#F8FAFC">, session=</text>
-  <text x="598" y="232" font-family="monospace" font-size="13" fill="#3B82F6">1</text>
-  <text x="610" y="232" font-family="monospace" font-size="13" fill="#F8FAFC">)</text>
-
-  <!-- Verbose output: no memories -->
-  <text x="20" y="260" font-family="monospace" font-size="13" fill="#22D3EE">  &#x25CF;</text>
-  <text x="42" y="260" font-family="monospace" font-size="13" fill="#94A3B8"> No prior memories </text>
-  <text x="210" y="260" font-family="monospace" font-size="13" fill="#64748B">(first conversation)</text>
-  <text x="20" y="280" font-family="monospace" font-size="13" fill="#22D3EE">  &#x25CF;</text>
-  <text x="42" y="280" font-family="monospace" font-size="13" fill="#94A3B8"> Thinking...</text>
-  <text x="20" y="300" font-family="monospace" font-size="13" fill="#22D3EE">  &#x25CF;</text>
-  <text x="42" y="300" font-family="monospace" font-size="13" fill="#94A3B8"> Saved </text>
-  <text x="93" y="300" font-family="monospace" font-size="13" fill="#22C55E">2 facts, 1 inference</text>
-
-  <!-- Blank line -->
-
-  <!-- Session 2: agent remembers -->
-  <text x="20" y="336" font-family="monospace" font-size="13" fill="#64748B"># Session 2 -- the agent remembers</text>
-
-  <!-- Line: agent.chat session 2 -->
-  <text x="20" y="358" font-family="monospace" font-size="13" fill="#F8FAFC">response = agent.chat(</text>
-  <text x="200" y="358" font-family="monospace" font-size="13" fill="#F59E0B">"What am I working on?"</text>
-  <text x="382" y="358" font-family="monospace" font-size="13" fill="#F8FAFC">, session=</text>
-  <text x="462" y="358" font-family="monospace" font-size="13" fill="#3B82F6">2</text>
-  <text x="474" y="358" font-family="monospace" font-size="13" fill="#F8FAFC">)</text>
-
-  <!-- Verbose output: recalled -->
-  <text x="20" y="386" font-family="monospace" font-size="13" fill="#22D3EE">  &#x25CF;</text>
-  <text x="42" y="386" font-family="monospace" font-size="13" fill="#94A3B8"> Recalled </text>
-  <text x="123" y="386" font-family="monospace" font-size="13" fill="#22C55E">3</text>
-  <text x="135" y="386" font-family="monospace" font-size="13" fill="#94A3B8"> memories</text>
-  <text x="20" y="406" font-family="monospace" font-size="13" fill="#22D3EE">  &#x25CF;</text>
-  <text x="42" y="406" font-family="monospace" font-size="13" fill="#94A3B8"> Thinking...</text>
-  <text x="20" y="426" font-family="monospace" font-size="13" fill="#22D3EE">  &#x25CF;</text>
-  <text x="42" y="426" font-family="monospace" font-size="13" fill="#94A3B8"> Saved </text>
-  <text x="93" y="426" font-family="monospace" font-size="13" fill="#22C55E">1 fact</text>
-
-  <!-- Blank line -->
-
-  <!-- print(response.content) -->
-  <text x="20" y="460" font-family="monospace" font-size="13" fill="#F8FAFC">print(response.content)</text>
-
-  <!-- Response output -->
-  <text x="20" y="488" font-family="monospace" font-size="13" fill="#F59E0B">"You're building a Rust compiler, Marcus."</text>
-
+  <circle cx="699" cy="474" r="4" fill="#ea580c"/>
 </svg>
