@@ -231,6 +231,10 @@ print_client_help() {
     echo "For Codex, Cursor, Windsurf, VS Code, Cline, or any MCP client, add:"
     echo "  command: ${INSTALL_DIR}/${BINARY_NAME}"
     echo "  args: [\"serve\"]"
+    echo ""
+    echo "Quick terminal check:"
+    echo "  ${INSTALL_DIR}/${BINARY_NAME} serve"
+    echo "  (Ctrl+C to stop after startup check)"
 }
 
 # ── Check PATH ────────────────────────────────────────────────────────
