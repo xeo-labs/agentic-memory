@@ -16,10 +16,6 @@
   <a href="#quickstart">Quickstart</a> · <a href="#why-agentic-memory">Why</a> · <a href="#mcp-server">MCP Server</a> · <a href="#benchmarks">Benchmarks</a> · <a href="#the-query-engine">Query Engine</a> · <a href="#install">Install</a> · <a href="docs/api-reference.md">API</a> · <a href="paper/paper-i-format/agenticmemory-paper.pdf">Papers</a>
 </p>
 
-> **Standalone guarantee:** AgenticMemory is independently installable and operable. Integration with AgenticVision/AgenticCodebase is optional, never required.
->
-> **Autonomic defaults (phase 4):** MCP runtime now supports profile-driven operations (`AMEM_AUTONOMIC_PROFILE` = `desktop|cloud|aggressive`) plus sleep-cycle maintenance (decay refresh, tier balancing, completed-session auto-archive), rolling backups, policy-gated storage migration (`AMEM_STORAGE_MIGRATION_POLICY` = `auto-safe|strict|off`), SLA-aware maintenance throttling (`AMEM_SLA_MAX_MUTATIONS_PER_MIN`), and health-ledger snapshots (`AMEM_HEALTH_LEDGER_DIR` or `AGENTRA_HEALTH_LEDGER_DIR`) with no required user settings. Default ledger location is `~/.agentra/health-ledger`. Optional tuning: `AMEM_AUTOSAVE_SECS`, `AMEM_AUTO_BACKUP_SECS`, `AMEM_AUTO_BACKUP_RETENTION`, `AMEM_AUTO_BACKUP_DIR`, `AMEM_SLEEP_CYCLE_SECS`, `AMEM_SLEEP_IDLE_SECS`, `AMEM_ARCHIVE_MIN_SESSION_NODES`, `AMEM_TIER_HOT_MIN_DECAY`, `AMEM_TIER_WARM_MIN_DECAY`, `AMEM_HEALTH_LEDGER_EMIT_SECS`.
-
 ---
 
 ## Every AI agent has amnesia.
@@ -122,7 +118,7 @@ Rust core. Memory-mapped I/O. Zero-copy access. Real numbers from Criterion stat
 
 **One file. Truly portable.** Your entire memory is a single `.amem` file. Copy it. Back it up. Version control it. No cloud service, no API keys, no vendor lock-in.
 
-**Any LLM, any time.** Start with Claude today. Switch to GPT tomorrow. Move to a local model next year. Same brain file. [Validated across providers](validation/phase7b_report.md) with 21 cross-provider tests.
+**Any LLM, any time.** Start with Claude today. Switch to GPT tomorrow. Move to a local model next year. Same brain file. [Cross-provider validation report](validation/cross-provider-report.md) with 21 interoperability tests.
 
 **Self-correcting.** Corrections don't delete -- they SUPERSEDE. The old fact, the new fact, and the correction chain are all preserved. `brain.resolve(old_id)` always returns the current truth.
 
@@ -233,6 +229,20 @@ cargo install agentic-memory-mcp       # MCP server
 ```
 
 </details>
+
+## Deployment Model
+
+- **Standalone by default:** AgenticMemory is independently installable and operable. Integration with AgenticVision or AgenticCodebase is optional, never required.
+- **Autonomic operations by default:** runtime maintenance uses safe profile-based defaults with backup, sleep-cycle upkeep, migration safeguards, and health-ledger snapshots.
+
+| Area | Default behavior | Controls |
+|:---|:---|:---|
+| Autonomic profile | Local-first conservative posture | `AMEM_AUTONOMIC_PROFILE=desktop|cloud|aggressive` |
+| Sleep-cycle maintenance | Decay refresh, tier balancing, completed-session auto-archive | `AMEM_SLEEP_CYCLE_SECS`, `AMEM_SLEEP_IDLE_SECS` |
+| Backup + retention | Rolling backups with bounded retention | `AMEM_AUTO_BACKUP_SECS`, `AMEM_AUTO_BACKUP_RETENTION`, `AMEM_AUTO_BACKUP_DIR` |
+| Storage migration | Policy-gated with checkpointed auto-safe path | `AMEM_STORAGE_MIGRATION_POLICY=auto-safe|strict|off` |
+| Maintenance throttling | SLA-aware under sustained mutation load | `AMEM_SLA_MAX_MUTATIONS_PER_MIN` |
+| Health ledger | Periodic operational snapshots (default: `~/.agentra/health-ledger`) | `AMEM_HEALTH_LEDGER_DIR`, `AGENTRA_HEALTH_LEDGER_DIR`, `AMEM_HEALTH_LEDGER_EMIT_SECS` |
 
 ---
 
