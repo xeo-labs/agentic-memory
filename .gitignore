@@ -49,6 +49,7 @@ htmlcov/
 
 # Planning docs / AI prompts (internal only)
 planning-docs/
+docs/planning/
 CLAUDE-CODE-INSTRUCTIONS*.md
 SPEC-*.md
 
@@ -58,6 +59,7 @@ crates/agentic-memory-mcp/scripts/
 
 # Claude Code
 .claude/
+.agentra/
 
 # Root-level paper files (canonical copies are in paper/)
 /agenticmemory-paper.*

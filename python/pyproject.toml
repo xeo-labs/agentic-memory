@@ -50,9 +50,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/xeo-labs/agentic-memory"
-Documentation = "https://github.com/xeo-labs/agentic-memory/tree/main/docs"
-Repository = "https://github.com/xeo-labs/agentic-memory"
+Homepage = "https://github.com/agentralabs/agentic-memory"
+Documentation = "https://github.com/agentralabs/agentic-memory/tree/main/docs"
+Repository = "https://github.com/agentralabs/agentic-memory"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentic_memory"]

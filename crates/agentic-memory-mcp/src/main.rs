@@ -8,6 +8,7 @@ use clap::{Parser, Subcommand};
 
 use agentic_memory_mcp::config::resolve_memory_path;
 use agentic_memory_mcp::protocol::ProtocolHandler;
+use agentic_memory_mcp::session::autosave::spawn_maintenance;
 use agentic_memory_mcp::session::SessionManager;
 use agentic_memory_mcp::tools::ToolRegistry;
 use agentic_memory_mcp::transport::StdioTransport;
@@ -170,7 +171,9 @@ async fn main() -> anyhow::Result<()> {
             tracing::info!("Brain: {memory_path}");
             tracing::info!("Mode: {mode}");
             let session = SessionManager::open(&memory_path)?;
+            let maintenance_interval = session.maintenance_interval();
             let session = Arc::new(Mutex::new(session));
+            let _maintenance_task = spawn_maintenance(session.clone(), maintenance_interval);
             let handler = ProtocolHandler::with_mode(session, memory_mode);
             let transport = StdioTransport::new(handler);
             transport.run().await?;
@@ -187,8 +190,8 @@ async fn main() -> anyhow::Result<()> {
             multi_tenant,
             data_dir,
         } => {
-            use agentic_memory_mcp::transport::sse::{ServerMode, SseTransport};
             use agentic_memory_mcp::session::tenant::TenantRegistry;
+            use agentic_memory_mcp::transport::sse::{ServerMode, SseTransport};
 
             let memory_mode = MemoryMode::parse(&mode).unwrap_or_else(|| {
                 tracing::warn!("Unknown mode '{mode}', falling back to 'smart'");
@@ -219,7 +222,9 @@ async fn main() -> anyhow::Result<()> {
                 tracing::info!("Brain: {memory_path}");
                 tracing::info!("Mode: {mode}");
                 let session = SessionManager::open(&memory_path)?;
+                let maintenance_interval = session.maintenance_interval();
                 let session = Arc::new(Mutex::new(session));
+                let _maintenance_task = spawn_maintenance(session.clone(), maintenance_interval);
                 let handler = ProtocolHandler::with_mode(session, memory_mode);
                 ServerMode::Single(Arc::new(handler))
             };
@@ -369,7 +374,10 @@ async fn main() -> anyhow::Result<()> {
                         "nodes": nodes_json,
                         "edges": edges_json,
                     });
-                    println!("{}", serde_json::to_string_pretty(&output).unwrap_or_default());
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&output).unwrap_or_default()
+                    );
                 }
                 "csv" => {
                     println!("id,event_type,created_at,session_id,confidence,access_count,last_accessed,decay_score,content");

@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **New error codes**
   - `UNAUTHORIZED (-32803)`, `USER_NOT_FOUND (-32804)`, `RATE_LIMITED (-32805)`
 
-Tracking: [#1](https://github.com/xeo-labs/agentic-memory/issues/1)
+Tracking: [#1](https://github.com/agentralabs/agentic-memory/issues/1)
 
 ## [0.2.0] - 2026-02-19
 

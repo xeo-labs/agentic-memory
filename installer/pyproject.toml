@@ -30,8 +30,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/xeo-labs/agentic-memory"
-Repository = "https://github.com/xeo-labs/agentic-memory"
+Homepage = "https://github.com/agentralabs/agentic-memory"
+Repository = "https://github.com/agentralabs/agentic-memory"
 
 [project.scripts]
 amem-install = "amem_installer.cli:main"

@@ -74,7 +74,10 @@ async fn main() {
         )
         .await;
         let fact_id = extract_id(&r1);
-        println!("Agent A: Observed - 500 errors on /api/checkout (node {})", fact_id);
+        println!(
+            "Agent A: Observed - 500 errors on /api/checkout (node {})",
+            fact_id
+        );
 
         tool(
             &handler,
@@ -162,9 +165,7 @@ async fn main() {
             }),
         )
         .await;
-        println!(
-            "\nAgent B: Session 42 closed with episode summary.\n"
-        );
+        println!("\nAgent B: Session 42 closed with episode summary.\n");
     }
 
     // Verify everything

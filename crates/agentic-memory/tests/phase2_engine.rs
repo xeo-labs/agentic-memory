@@ -210,7 +210,7 @@ fn test_decay_calculation() {
     let event_b = CognitiveEventBuilder::new(EventType::Fact, "old and forgotten")
         .session_id(1)
         .confidence(1.0)
-        .created_at(1 * micros_per_day)
+        .created_at(micros_per_day)
         .feature_vec(zero_vec())
         .build();
 

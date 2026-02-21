@@ -1,12 +1,12 @@
 [package]
 name = "agentic-memory"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "Binary graph-based memory system for AI agents"
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/xeo-labs/agentic-memory"
-homepage = "https://github.com/xeo-labs/agentic-memory"
+repository = "https://github.com/agentralabs/agentic-memory"
+homepage = "https://agentralabs.tech"
 keywords = ["ai", "agent", "memory", "llm", "graph"]
 categories = ["data-structures", "command-line-utilities"]
 
@@ -31,6 +31,8 @@ log = "0.4"                    # Logging facade
 
 # CLI
 clap = { version = "4", features = ["derive"] }  # CLI argument parsing
+clap_complete = "4"                # Shell completion generation
+rustyline = "14"                   # Interactive REPL
 
 # Serialization (for CLI JSON output only, NOT for .amem format)
 serde = { version = "1", features = ["derive"] }

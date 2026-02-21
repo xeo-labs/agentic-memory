@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="AgenticMemory" width="320">
+  <img src="assets/github-hero-pane.svg" alt="AgenticMemory hero pane" width="980">
 </p>
 
 <p align="center">
@@ -15,6 +15,10 @@
 <p align="center">
   <a href="#quickstart">Quickstart</a> · <a href="#why-agentic-memory">Why</a> · <a href="#mcp-server">MCP Server</a> · <a href="#benchmarks">Benchmarks</a> · <a href="#the-query-engine">Query Engine</a> · <a href="#install">Install</a> · <a href="docs/api-reference.md">API</a> · <a href="paper/paper-i-format/agenticmemory-paper.pdf">Papers</a>
 </p>
+
+> **Standalone guarantee:** AgenticMemory is independently installable and operable. Integration with AgenticVision/AgenticCodebase is optional, never required.
+>
+> **Autonomic defaults (phase 4):** MCP runtime now supports profile-driven operations (`AMEM_AUTONOMIC_PROFILE` = `desktop|cloud|aggressive`) plus sleep-cycle maintenance (decay refresh, tier balancing, completed-session auto-archive), rolling backups, policy-gated storage migration (`AMEM_STORAGE_MIGRATION_POLICY` = `auto-safe|strict|off`), SLA-aware maintenance throttling (`AMEM_SLA_MAX_MUTATIONS_PER_MIN`), and health-ledger snapshots (`AMEM_HEALTH_LEDGER_DIR` or `AGENTRA_HEALTH_LEDGER_DIR`) with no required user settings. Default ledger location is `~/.agentra/health-ledger`. Optional tuning: `AMEM_AUTOSAVE_SECS`, `AMEM_AUTO_BACKUP_SECS`, `AMEM_AUTO_BACKUP_RETENTION`, `AMEM_AUTO_BACKUP_DIR`, `AMEM_SLEEP_CYCLE_SECS`, `AMEM_SLEEP_IDLE_SECS`, `AMEM_ARCHIVE_MIN_SESSION_NODES`, `AMEM_TIER_HOT_MIN_DECAY`, `AMEM_TIER_WARM_MIN_DECAY`, `AMEM_HEALTH_LEDGER_EMIT_SECS`.
 
 ---
 
@@ -45,6 +49,10 @@ timeline = brain.drift("programming languages")    # How has this belief changed
 ```
 
 Six lines. Sixteen query types. One file holds everything. Works with Claude, GPT, Ollama, or any LLM you switch to next.
+
+<p align="center">
+  <img src="assets/github-terminal-pane.svg" alt="AgenticMemory terminal pane" width="980">
+</p>
 
 ---
 
@@ -192,7 +200,7 @@ report = brain.drift("preferred language")
 
 **One-liner** (downloads binary + configures Claude):
 ```bash
-curl -fsSL https://raw.githubusercontent.com/xeo-labs/agentic-memory/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/agentralabs/agentic-memory/main/scripts/install.sh | bash
 ```
 
 Downloads a pre-built `agentic-memory-mcp` binary to `~/.local/bin/` and merges the MCP server into your Claude Desktop and Claude Code configs. Memory defaults to `~/.brain.amem`. Requires `curl` and `jq`.
@@ -225,10 +233,6 @@ cargo install agentic-memory-mcp       # MCP server
 ```
 
 </details>
-
-<p align="center">
-  <img src="assets/cli-demo.svg" alt="CLI demo showing brain operations" width="780">
-</p>
 
 ---
 
@@ -504,7 +508,7 @@ Configure Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_c
 
 ## Roadmap: v0.2.0 — Remote Server Support
 
-The next release adds HTTP/SSE transport for remote deployments. Track progress in [#1](https://github.com/xeo-labs/agentic-memory/issues/1).
+The next release adds HTTP/SSE transport for remote deployments. Track progress in [#1](https://github.com/agentralabs/agentic-memory/issues/1).
 
 | Feature | Status |
 |:---|:---|
@@ -537,7 +541,7 @@ agentic-memory-mcp serve-http \
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). The fastest ways to help:
 
-1. **Try it** and [file issues](https://github.com/xeo-labs/agentic-memory/issues)
+1. **Try it** and [file issues](https://github.com/agentralabs/agentic-memory/issues)
 2. **Add an LLM provider** -- write an integration for a new backend
 3. **Write an example** -- show a real use case
 4. **Improve docs** -- every clarification helps someone
@@ -545,5 +549,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The fastest ways to help:
 ---
 
 <p align="center">
-  <sub>Built by <a href="https://github.com/xeo-labs"><strong>Xeo Labs</strong></a></sub>
+  <sub>Built by <a href="https://github.com/agentralabs"><strong>Agentra Labs</strong></a></sub>
 </p>

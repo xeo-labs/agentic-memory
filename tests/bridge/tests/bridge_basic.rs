@@ -7,7 +7,9 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use agentic_memory::{AmemReader, AmemWriter, CognitiveEventBuilder, EdgeType, EventType, MemoryGraph};
+use agentic_memory::{
+    AmemReader, AmemWriter, CognitiveEventBuilder, EdgeType, EventType, MemoryGraph,
+};
 use agentic_memory_mcp::types::{JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, RequestId};
 use agentic_memory_mcp::{ProtocolHandler, SessionManager};
 use serde_json::json;
@@ -146,11 +148,10 @@ async fn test_core_write_mcp_read() {
     // Write with core library
     let dimension = agentic_memory::DEFAULT_DIMENSION;
     let mut graph = MemoryGraph::new(dimension);
-    let event =
-        CognitiveEventBuilder::new(EventType::Decision, "Chose microservices architecture")
-            .confidence(0.9)
-            .session_id(1)
-            .build();
+    let event = CognitiveEventBuilder::new(EventType::Decision, "Chose microservices architecture")
+        .confidence(0.9)
+        .session_id(1)
+        .build();
     let node_id = graph.add_node(event).unwrap();
 
     let writer = AmemWriter::new(dimension);

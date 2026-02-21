@@ -247,7 +247,7 @@ fn test_v2_file_gracefully_handled_by_v1_reader() {
 
         // A v0.1 reader would recognize tags 0x01-0x04 and skip unknown tags.
         match tag {
-            0x01 | 0x02 | 0x03 | 0x04 => {
+            0x01..=0x04 => {
                 // Known v0.1 tags: skip the data (already rebuilt from nodes).
                 pos += length;
             }

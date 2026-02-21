@@ -3,7 +3,8 @@
 use std::path::PathBuf;
 use std::process;
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 
 use agentic_memory::cli::commands;
 use agentic_memory::engine::PatternSort;
@@ -25,7 +26,7 @@ struct Cli {
     verbose: bool,
 
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -375,6 +376,16 @@ enum Commands {
         #[arg(long, default_value = "0.5")]
         min_relevance: f32,
     },
+    /// Generate shell completion scripts
+    ///
+    /// Examples:
+    ///   amem completions bash > ~/.local/share/bash-completion/completions/amem
+    ///   amem completions zsh > ~/.zfunc/_amem
+    ///   amem completions fish > ~/.config/fish/completions/amem.fish
+    Completions {
+        /// Shell type (bash, zsh, fish, powershell, elvish)
+        shell: Shell,
+    },
 }
 
 fn main() {
@@ -387,16 +398,31 @@ fn main() {
     }
 
     let result = match cli.command {
-        Commands::Create { file, dimension } => commands::cmd_create(&file, dimension),
-        Commands::Info { file } => commands::cmd_info(&file, json),
-        Commands::Add {
+        // No subcommand → launch interactive REPL
+        None => match agentic_memory::cli::repl::run() {
+            Ok(()) => return,
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                process::exit(1);
+            }
+        },
+
+        Some(Commands::Completions { shell }) => {
+            let mut cmd = Cli::command();
+            clap_complete::generate(shell, &mut cmd, "amem", &mut std::io::stdout());
+            Ok(())
+        }
+
+        Some(Commands::Create { file, dimension }) => commands::cmd_create(&file, dimension),
+        Some(Commands::Info { file }) => commands::cmd_info(&file, json),
+        Some(Commands::Add {
             file,
             event_type,
             content,
             session,
             confidence,
             supersedes,
-        } => {
+        }) => {
             let et = match EventType::from_name(&event_type) {
                 Some(et) => et,
                 None => {
@@ -406,13 +432,13 @@ fn main() {
             };
             commands::cmd_add(&file, et, &content, session, confidence, supersedes, json)
         }
-        Commands::Link {
+        Some(Commands::Link {
             file,
             source_id,
             target_id,
             edge_type,
             weight,
-        } => {
+        }) => {
             let et = match EdgeType::from_name(&edge_type) {
                 Some(et) => et,
                 None => {
@@ -422,8 +448,8 @@ fn main() {
             };
             commands::cmd_link(&file, source_id, target_id, et, weight, json)
         }
-        Commands::Get { file, node_id } => commands::cmd_get(&file, node_id, json),
-        Commands::Traverse {
+        Some(Commands::Get { file, node_id }) => commands::cmd_get(&file, node_id, json),
+        Some(Commands::Traverse {
             file,
             start_id,
             edge_types,
@@ -431,7 +457,7 @@ fn main() {
             max_depth,
             max_results,
             min_confidence,
-        } => {
+        }) => {
             let ets: Vec<EdgeType> = edge_types
                 .map(|s| {
                     s.split(',')
@@ -455,7 +481,7 @@ fn main() {
                 json,
             )
         }
-        Commands::Search {
+        Some(Commands::Search {
             file,
             event_types,
             session,
@@ -465,7 +491,7 @@ fn main() {
             before,
             sort,
             limit,
-        } => {
+        }) => {
             let ets: Vec<EventType> = event_types
                 .map(|s| {
                     s.split(',')
@@ -495,30 +521,30 @@ fn main() {
                 json,
             )
         }
-        Commands::Impact {
+        Some(Commands::Impact {
             file,
             node_id,
             max_depth,
-        } => commands::cmd_impact(&file, node_id, max_depth, json),
-        Commands::Resolve { file, node_id } => commands::cmd_resolve(&file, node_id, json),
-        Commands::Sessions { file, limit } => commands::cmd_sessions(&file, limit, json),
-        Commands::Export {
+        }) => commands::cmd_impact(&file, node_id, max_depth, json),
+        Some(Commands::Resolve { file, node_id }) => commands::cmd_resolve(&file, node_id, json),
+        Some(Commands::Sessions { file, limit }) => commands::cmd_sessions(&file, limit, json),
+        Some(Commands::Export {
             file,
             nodes_only,
             session,
             pretty,
-        } => commands::cmd_export(&file, nodes_only, session, pretty),
-        Commands::Import { file, json_file } => commands::cmd_import(&file, &json_file),
-        Commands::Decay { file, threshold } => commands::cmd_decay(&file, threshold, json),
-        Commands::Stats { file } => commands::cmd_stats(&file, json),
-        Commands::TextSearch {
+        }) => commands::cmd_export(&file, nodes_only, session, pretty),
+        Some(Commands::Import { file, json_file }) => commands::cmd_import(&file, &json_file),
+        Some(Commands::Decay { file, threshold }) => commands::cmd_decay(&file, threshold, json),
+        Some(Commands::Stats { file }) => commands::cmd_stats(&file, json),
+        Some(Commands::TextSearch {
             file,
             query,
             event_types,
             session,
             limit,
             min_score,
-        } => {
+        }) => {
             let ets: Vec<EventType> = event_types
                 .map(|s| {
                     s.split(',')
@@ -531,14 +557,14 @@ fn main() {
                 .unwrap_or_default();
             commands::cmd_text_search(&file, &query, ets, sids, limit, min_score, json)
         }
-        Commands::HybridSearch {
+        Some(Commands::HybridSearch {
             file,
             query,
             text_weight,
             vec_weight,
             limit,
             event_types,
-        } => {
+        }) => {
             let ets: Vec<EventType> = event_types
                 .map(|s| {
                     s.split(',')
@@ -548,7 +574,7 @@ fn main() {
                 .unwrap_or_default();
             commands::cmd_hybrid_search(&file, &query, text_weight, vec_weight, limit, ets, json)
         }
-        Commands::Centrality {
+        Some(Commands::Centrality {
             file,
             algorithm,
             damping,
@@ -556,7 +582,7 @@ fn main() {
             event_types,
             limit,
             iterations,
-        } => {
+        }) => {
             let ets: Vec<EventType> = event_types
                 .map(|s| {
                     s.split(',')
@@ -575,7 +601,7 @@ fn main() {
                 &file, &algorithm, damping, edts, ets, limit, iterations, json,
             )
         }
-        Commands::Path {
+        Some(Commands::Path {
             file,
             source_id,
             target_id,
@@ -583,7 +609,7 @@ fn main() {
             direction,
             max_depth,
             weighted,
-        } => {
+        }) => {
             let edts: Vec<EdgeType> = edge_types
                 .map(|s| {
                     s.split(',')
@@ -600,21 +626,21 @@ fn main() {
                 &file, source_id, target_id, edts, dir, max_depth, weighted, json,
             )
         }
-        Commands::Revise {
+        Some(Commands::Revise {
             file,
             hypothesis,
             threshold,
             max_depth,
             confidence,
-        } => commands::cmd_revise(&file, &hypothesis, threshold, max_depth, confidence, json),
-        Commands::Gaps {
+        }) => commands::cmd_revise(&file, &hypothesis, threshold, max_depth, confidence, json),
+        Some(Commands::Gaps {
             file,
             threshold,
             min_support,
             limit,
             sort,
             session,
-        } => {
+        }) => {
             let session_range = session.and_then(|s| {
                 let parts: Vec<&str> = s.split(':').collect();
                 if parts.len() == 2 {
@@ -635,14 +661,14 @@ fn main() {
                 json,
             )
         }
-        Commands::Analogy {
+        Some(Commands::Analogy {
             file,
             description,
             limit,
             min_similarity,
             exclude_session,
             depth,
-        } => {
+        }) => {
             let exclude: Vec<u32> = exclude_session
                 .map(|s| s.split(',').filter_map(|t| t.trim().parse().ok()).collect())
                 .unwrap_or_default();
@@ -656,7 +682,7 @@ fn main() {
                 json,
             )
         }
-        Commands::Consolidate {
+        Some(Commands::Consolidate {
             file,
             deduplicate,
             link_contradictions,
@@ -667,7 +693,7 @@ fn main() {
             threshold,
             confirm,
             backup,
-        } => commands::cmd_consolidate(
+        }) => commands::cmd_consolidate(
             &file,
             deduplicate,
             link_contradictions,
@@ -680,12 +706,12 @@ fn main() {
             backup,
             json,
         ),
-        Commands::Drift {
+        Some(Commands::Drift {
             file,
             topic,
             limit,
             min_relevance,
-        } => commands::cmd_drift(&file, &topic, limit, min_relevance, json),
+        }) => commands::cmd_drift(&file, &topic, limit, min_relevance, json),
     };
 
     if let Err(e) = result {

@@ -109,7 +109,7 @@ impl FileHeader {
         }
 
         let version = u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]);
-        if version != FORMAT_VERSION {
+        if version > FORMAT_VERSION {
             return Err(AmemError::UnsupportedVersion(version));
         }
 

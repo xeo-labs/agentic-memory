@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
+use super::autosave::spawn_maintenance;
 use super::SessionManager;
 use crate::types::McpResult;
 
@@ -46,7 +47,9 @@ impl TenantRegistry {
         tracing::info!("Opening brain for user '{user_id}': {path_str}");
 
         let session = SessionManager::open(&path_str)?;
+        let maintenance_interval = session.maintenance_interval();
         let session = Arc::new(Mutex::new(session));
+        let _maintenance_task = spawn_maintenance(session.clone(), maintenance_interval);
         self.sessions.insert(user_id.to_string(), session.clone());
 
         Ok(session)

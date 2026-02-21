@@ -23,7 +23,7 @@ This installs the `amem` binary. Requires Rust 1.70 or later (tested with 1.90.0
 ### From Source
 
 ```bash
-git clone https://github.com/xeo-labs/agentic-memory.git
+git clone https://github.com/agentralabs/agentic-memory.git
 cd agentic-memory
 cargo build --release
 pip install -e python/

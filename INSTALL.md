@@ -3,7 +3,7 @@
 ## Quick Install (one-liner)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/xeo-labs/agentic-memory/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/agentralabs/agentic-memory/main/scripts/install.sh | bash
 ```
 
 Downloads a pre-built `agentic-memory-mcp` binary, installs to `~/.local/bin/`, and merges the MCP server config into Claude Desktop and Claude Code. Memory defaults to `~/.brain.amem`. Requires `curl` and `jq`.
@@ -229,7 +229,7 @@ All 5 tools now share persistent memory.
 
 ## 5. Remote Server (coming in v0.2.0)
 
-> **Preview** — these features are under development. Track progress in [#1](https://github.com/xeo-labs/agentic-memory/issues/1).
+> **Preview** — these features are under development. Track progress in [#1](https://github.com/agentralabs/agentic-memory/issues/1).
 
 ```bash
 # Remote single-user
@@ -246,14 +246,14 @@ agentic-memory-mcp serve-http \
   --token "secret123"
 ```
 
-Docker compose with Caddy reverse proxy will also be available. See the [v0.2.0 roadmap](https://github.com/xeo-labs/agentic-memory/issues/1) for details.
+Docker compose with Caddy reverse proxy will also be available. See the [v0.2.0 roadmap](https://github.com/agentralabs/agentic-memory/issues/1) for details.
 
 ---
 
 ## Build from Source
 
 ```bash
-git clone https://github.com/xeo-labs/agentic-memory.git
+git clone https://github.com/agentralabs/agentic-memory.git
 cd agentic-memory
 
 # Build entire workspace (core library + MCP server)
@@ -364,7 +364,7 @@ cargo install agentic-memory
 Or build from source if you don't have Rust:
 
 ```bash
-git clone https://github.com/xeo-labs/agentic-memory.git
+git clone https://github.com/agentralabs/agentic-memory.git
 cd agentic-memory
 cargo build --release
 cp target/release/amem /usr/local/bin/

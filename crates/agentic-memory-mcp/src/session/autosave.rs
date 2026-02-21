@@ -1,4 +1,4 @@
-//! Periodic auto-save background task.
+//! Periodic maintenance background task.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -6,8 +6,8 @@ use tokio::sync::Mutex;
 
 use super::manager::SessionManager;
 
-/// Spawn a background task that periodically auto-saves the session.
-pub fn spawn_autosave(
+/// Spawn a background task that periodically runs maintenance.
+pub fn spawn_maintenance(
     session: Arc<Mutex<SessionManager>>,
     interval: Duration,
 ) -> tokio::task::JoinHandle<()> {
@@ -16,8 +16,8 @@ pub fn spawn_autosave(
         loop {
             ticker.tick().await;
             let mut session = session.lock().await;
-            if let Err(e) = session.maybe_auto_save() {
-                tracing::error!("Auto-save failed: {e}");
+            if let Err(e) = session.run_maintenance_tick() {
+                tracing::error!("Maintenance tick failed: {e}");
             }
         }
     })

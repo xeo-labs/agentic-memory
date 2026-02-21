@@ -153,12 +153,7 @@ async fn test_agent_a_writes_agent_b_reads() {
         let handler = create_handler(path_str);
         init_handler(&handler).await;
 
-        let response = call_tool(
-            &handler,
-            "memory_query",
-            json!({"event_types": ["fact"]}),
-        )
-        .await;
+        let response = call_tool(&handler, "memory_query", json!({"event_types": ["fact"]})).await;
 
         let facts = parse_query_results(&response);
         assert_eq!(facts.len(), 2);
@@ -227,12 +222,8 @@ async fn test_correction_propagates_to_agent_b() {
         let handler = create_handler(path_str);
         init_handler(&handler).await;
 
-        let resolve_response = call_tool(
-            &handler,
-            "memory_resolve",
-            json!({"node_id": original_id}),
-        )
-        .await;
+        let resolve_response =
+            call_tool(&handler, "memory_resolve", json!({"node_id": original_id})).await;
 
         let text = resolve_response["result"]["content"][0]["text"]
             .as_str()

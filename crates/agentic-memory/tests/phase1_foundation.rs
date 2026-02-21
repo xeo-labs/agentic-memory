@@ -455,13 +455,13 @@ fn test_write_read_feature_vectors() {
     let loaded = AmemReader::read_from_file(tmp.path()).unwrap();
     let node = loaded.get_node(0).unwrap();
 
-    for i in 0..DEFAULT_DIMENSION {
+    for (i, (actual, expected)) in node.feature_vec.iter().zip(fv.iter()).enumerate() {
         assert!(
-            (node.feature_vec[i] - fv[i]).abs() < 1e-6,
+            (actual - expected).abs() < 1e-6,
             "Feature vec mismatch at index {}: {} vs {}",
             i,
-            node.feature_vec[i],
-            fv[i]
+            actual,
+            expected
         );
     }
 }

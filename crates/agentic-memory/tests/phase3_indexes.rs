@@ -496,12 +496,12 @@ fn build_mmap_test_graph() -> MemoryGraph {
         EventType::Inference,
     ];
 
-    for i in 0..10 {
+    for (i, event_type) in types.iter().enumerate() {
         let mut fv = vec![0.0f32; DEFAULT_DIMENSION];
         for val in fv.iter_mut() {
             *val = rng.gen_range(-1.0..1.0);
         }
-        let event = CognitiveEventBuilder::new(types[i], format!("mmap_content_{}", i))
+        let event = CognitiveEventBuilder::new(*event_type, format!("mmap_content_{}", i))
             .session_id(i as u32 / 3)
             .confidence(0.5 + (i as f32) * 0.05)
             .feature_vec(fv)
@@ -663,8 +663,8 @@ fn test_mmap_batch_similarity() {
 
     // Node 2: first half 1s, second half 0s
     let mut fv_half: Vec<f32> = vec![0.0; DEFAULT_DIMENSION];
-    for i in 0..DEFAULT_DIMENSION / 2 {
-        fv_half[i] = 1.0;
+    for val in fv_half.iter_mut().take(DEFAULT_DIMENSION / 2) {
+        *val = 1.0;
     }
     let event2 = CognitiveEventBuilder::new(EventType::Fact, "half")
         .feature_vec(fv_half)
@@ -706,7 +706,7 @@ fn test_mmap_batch_similarity() {
     // Test with min_similarity threshold
     let results_positive = reader.batch_similarity(&fv_ones, 10, 0.5).unwrap();
     // Only nodes 0 and 2 should pass (node 0 ~ 1.0, node 2 ~ 0.707)
-    assert!(results_positive.len() >= 1);
+    assert!(!results_positive.is_empty());
     for r in &results_positive {
         assert!(
             r.similarity >= 0.5,

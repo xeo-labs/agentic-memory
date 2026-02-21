@@ -64,10 +64,7 @@ impl SseTransport {
     }
 
     /// Create an SSE transport with full configuration.
-    pub fn with_config(
-        token: Option<String>,
-        mode: ServerMode,
-    ) -> Self {
+    pub fn with_config(token: Option<String>, mode: ServerMode) -> Self {
         Self {
             state: Arc::new(ServerState { token, mode }),
         }
@@ -209,12 +206,28 @@ async fn handle_request(
 
 /// Health check endpoint — no auth required.
 #[cfg(feature = "sse")]
-async fn handle_health(
-    State(state): State<Arc<ServerState>>,
-) -> AxumJson<serde_json::Value> {
+async fn handle_health(State(state): State<Arc<ServerState>>) -> AxumJson<serde_json::Value> {
+    let profile = std::env::var("AMEM_AUTONOMIC_PROFILE")
+        .unwrap_or_else(|_| "desktop".to_string())
+        .trim()
+        .to_ascii_lowercase();
+    let migration_policy = std::env::var("AMEM_STORAGE_MIGRATION_POLICY")
+        .unwrap_or_else(|_| "auto-safe".to_string())
+        .trim()
+        .to_ascii_lowercase();
+    let ledger_dir = std::env::var("AMEM_HEALTH_LEDGER_DIR")
+        .ok()
+        .or_else(|| std::env::var("AGENTRA_HEALTH_LEDGER_DIR").ok())
+        .unwrap_or_else(|| "~/.agentra/health-ledger".to_string());
+
     let mut health = serde_json::json!({
         "status": "ok",
         "version": env!("CARGO_PKG_VERSION"),
+        "autonomic": {
+            "profile": profile,
+            "migration_policy": migration_policy,
+            "health_ledger_dir": ledger_dir,
+        }
     });
 
     if let ServerMode::MultiTenant { registry, .. } = &state.mode {

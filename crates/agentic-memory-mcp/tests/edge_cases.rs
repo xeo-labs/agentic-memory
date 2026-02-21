@@ -472,7 +472,7 @@ async fn test_memory_traverse_single_node_no_edges() {
     let traversed: serde_json::Value = serde_json::from_str(text).unwrap();
     // Should return at least the start node in the visited array
     assert!(traversed["visited_count"].as_u64().unwrap() >= 1);
-    assert!(traversed["visited"].as_array().unwrap().len() >= 1);
+    assert!(!traversed["visited"].as_array().unwrap().is_empty());
 }
 
 // ============================================================

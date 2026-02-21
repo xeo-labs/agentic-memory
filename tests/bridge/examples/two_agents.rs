@@ -101,12 +101,7 @@ async fn main() {
         let handler = create_handler(path);
         init(&handler).await;
 
-        let facts = tool(
-            &handler,
-            "memory_query",
-            json!({"event_types": ["fact"]}),
-        )
-        .await;
+        let facts = tool(&handler, "memory_query", json!({"event_types": ["fact"]})).await;
         let text = facts["result"]["content"][0]["text"].as_str().unwrap();
         let parsed: serde_json::Value = serde_json::from_str(text).unwrap();
 
@@ -115,7 +110,10 @@ async fn main() {
             parsed["count"].as_u64().unwrap()
         );
         for node in parsed["nodes"].as_array().unwrap() {
-            println!("  - {} (confidence: {})", node["content"], node["confidence"]);
+            println!(
+                "  - {} (confidence: {})",
+                node["content"], node["confidence"]
+            );
         }
 
         println!("\nAgent B: Successfully read Agent A's memories from shared .amem file!");

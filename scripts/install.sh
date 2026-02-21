@@ -3,10 +3,15 @@
 # Downloads pre-built binary and configures Claude Desktop/Code.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/xeo-labs/agentic-memory/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/agentralabs/agentic-memory/main/scripts/install.sh | bash
 #
-# Future short URL (when agentic.sh is set up):
-#   curl -fsSL https://agentic.sh/memory | sh
+# Future (when agentralabs.tech is live):
+#   curl -fsSL https://agentralabs.tech/install/memory | sh
+#
+# Options:
+#   --version=X.Y.Z   Pin a specific version (default: latest)
+#   --dir=/path        Override install directory (default: ~/.local/bin)
+#   --dry-run          Print actions without executing
 #
 # What it does:
 #   1. Downloads agentic-memory-mcp binary to ~/.local/bin/
@@ -18,10 +23,25 @@
 set -euo pipefail
 
 # ── Constants ──────────────────────────────────────────────────────────
-REPO="xeo-labs/agentic-memory"
+REPO="agentralabs/agentic-memory"
 BINARY_NAME="agentic-memory-mcp"
 SERVER_KEY="agentic-memory"
 INSTALL_DIR="$HOME/.local/bin"
+VERSION="latest"
+DRY_RUN=false
+
+# ── Parse arguments ──────────────────────────────────────────────────
+for arg in "$@"; do
+    case "$arg" in
+        --version=*) VERSION="${arg#*=}" ;;
+        --dir=*)     INSTALL_DIR="${arg#*=}" ;;
+        --dry-run)   DRY_RUN=true ;;
+        --help|-h)
+            echo "Usage: install.sh [--version=X.Y.Z] [--dir=/path] [--dry-run]"
+            exit 0
+            ;;
+    esac
+done
 
 # ── Detect platform ───────────────────────────────────────────────────
 detect_platform() {
@@ -36,8 +56,8 @@ detect_platform() {
     esac
 
     case "$arch" in
-        x86_64|amd64)  arch="x64" ;;
-        arm64|aarch64) arch="arm64" ;;
+        x86_64|amd64)  arch="x86_64" ;;
+        arm64|aarch64) arch="aarch64" ;;
         *)             echo "Error: Unsupported architecture: $arch" >&2; exit 1 ;;
     esac
 
@@ -63,15 +83,33 @@ get_latest_version() {
         | jq -r '.tag_name'
 }
 
-# ── Download binary ───────────────────────────────────────────────────
+# ── Download and extract binary ──────────────────────────────────────
 download_binary() {
     local version="$1" platform="$2"
-    local asset_name="${BINARY_NAME}-${platform}"
+    local version_num="${version#v}"
+    local asset_name="agentic-memory-${version_num}-${platform}.tar.gz"
     local url="https://github.com/${REPO}/releases/download/${version}/${asset_name}"
 
     echo "Downloading ${BINARY_NAME} ${version} (${platform})..."
+
+    if [ "$DRY_RUN" = true ]; then
+        echo "  [dry-run] Would download: ${url}"
+        echo "  [dry-run] Would install to: ${INSTALL_DIR}/${BINARY_NAME}"
+        return
+    fi
+
+    local tmpdir
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "$tmpdir"' EXIT
+
     mkdir -p "$INSTALL_DIR"
-    curl -fsSL "$url" -o "${INSTALL_DIR}/${BINARY_NAME}"
+    curl -fsSL "$url" -o "${tmpdir}/${asset_name}"
+    tar xzf "${tmpdir}/${asset_name}" -C "$tmpdir"
+
+    # Copy both binaries (amem CLI + MCP server)
+    cp "${tmpdir}"/agentic-memory-*/amem "${INSTALL_DIR}/amem" 2>/dev/null || true
+    cp "${tmpdir}"/agentic-memory-*/${BINARY_NAME} "${INSTALL_DIR}/${BINARY_NAME}"
+    chmod +x "${INSTALL_DIR}/amem" 2>/dev/null || true
     chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
     echo "  Installed to ${INSTALL_DIR}/${BINARY_NAME}"
 }
@@ -83,21 +121,24 @@ merge_config() {
     local config_dir
     config_dir="$(dirname "$config_file")"
 
-    # Ensure directory exists
+    if [ "$DRY_RUN" = true ]; then
+        echo "    [dry-run] Would merge into: ${config_file}"
+        return
+    fi
+
     mkdir -p "$config_dir"
 
     if [ -f "$config_file" ] && [ -s "$config_file" ]; then
-        # Config exists — merge our server in, preserve everything else
         echo "    Existing config found, merging..."
         jq --arg key "$SERVER_KEY" \
            --arg cmd "${INSTALL_DIR}/${BINARY_NAME}" \
            '.mcpServers //= {} | .mcpServers[$key] = {"command": $cmd, "args": ["serve"]}' \
            "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
     else
-        # No config — create fresh with only our server
         echo "    Creating new config..."
-        jq -n --arg cmd "${INSTALL_DIR}/${BINARY_NAME}" \
-           '{ "mcpServers": { "agentic-memory": { "command": $cmd, "args": ["serve"] } } }' \
+        jq -n --arg key "$SERVER_KEY" \
+              --arg cmd "${INSTALL_DIR}/${BINARY_NAME}" \
+           '{ "mcpServers": { ($key): { "command": $cmd, "args": ["serve"] } } }' \
            > "$config_file"
     fi
 }
@@ -113,18 +154,17 @@ configure_claude_desktop() {
 
     echo "  Claude Desktop..."
     merge_config "$config_file"
-    echo "  ✅ Claude Desktop configured"
+    echo "  Done"
 }
 
 # ── Configure Claude Code ────────────────────────────────────────────
 configure_claude_code() {
     local config_file="$HOME/.claude/mcp.json"
 
-    # Only configure if Claude Code directory exists
     if [ -d "$HOME/.claude" ] || [ -f "$config_file" ]; then
         echo "  Claude Code..."
         merge_config "$config_file"
-        echo "  ✅ Claude Code configured"
+        echo "  Done"
     fi
 }
 
@@ -132,7 +172,7 @@ configure_claude_code() {
 check_path() {
     if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
         echo ""
-        echo "Note: Add ~/.local/bin to your PATH if not already:"
+        echo "Note: Add ${INSTALL_DIR} to your PATH if not already:"
         echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
         echo ""
         echo "Add this line to your ~/.zshrc or ~/.bashrc to make it permanent."
@@ -142,23 +182,26 @@ check_path() {
 # ── Main ──────────────────────────────────────────────────────────────
 main() {
     echo "AgenticMemory Installer"
-    echo "━━━━━━━━━━━━━━━━━━━━━━"
+    echo "======================"
     echo ""
 
     check_deps
 
     local platform
     platform="$(detect_platform)"
+    echo "Platform: ${platform}"
 
-    local version
-    version="$(get_latest_version)"
-    if [ -z "$version" ] || [ "$version" = "null" ]; then
+    if [ "$VERSION" = "latest" ]; then
+        VERSION="$(get_latest_version)"
+    fi
+    if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
         echo "Error: Could not determine latest release version." >&2
         echo "  You can install from source: cargo install agentic-memory-mcp" >&2
         exit 1
     fi
+    echo "Version: ${VERSION}"
 
-    download_binary "$version" "$platform"
+    download_binary "$VERSION" "$platform"
 
     echo ""
     echo "Configuring MCP clients..."

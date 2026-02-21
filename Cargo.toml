@@ -9,7 +9,7 @@ members = [
 [workspace.package]
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/xeo-labs/agentic-memory"
+repository = "https://github.com/agentralabs/agentic-memory"
 authors = ["Omoshola Owolabi"]
 
 [workspace.dependencies]

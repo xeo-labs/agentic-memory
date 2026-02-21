@@ -408,7 +408,8 @@ fn bench_hybrid_search_100k(c: &mut Criterion) {
                 vector_weight: 0.5,
                 rrf_k: 60,
             };
-            let _ = query_engine.hybrid_search(&graph, Some(&term_index), Some(&doc_lengths), params);
+            let _ =
+                query_engine.hybrid_search(&graph, Some(&term_index), Some(&doc_lengths), params);
         })
     });
 }

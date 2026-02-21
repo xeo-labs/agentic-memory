@@ -1,4 +1,5 @@
 //! Mock MCP client for integration testing.
+#![allow(dead_code)]
 
 use serde_json::{json, Value};
 
