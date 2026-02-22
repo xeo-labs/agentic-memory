@@ -98,12 +98,23 @@ This document is the single baseline contract for all current and future sisters
 
 - Canonical bootstrap + README structure now lives in web docs:
   - https://agentralabs.tech/docs/ecosystem-feature-reference
+- docs folder required for every sister (minimum baseline):
+  - `docs/quickstart.md`
+  - `docs/concepts.md`
+  - `docs/integration-guide.md`
+  - `docs/faq.md`
+  - `docs/benchmarks.md`
+  - `docs/api-reference.md`
+  - plus at least one advanced technical page (`docs/file-format.md` or `docs/LIMITATIONS.md`)
+- web docs wiring is mandatory before release:
+  - sister docs must be discoverable from https://agentralabs.tech/docs/sister-docs-catalog
+  - sync pipeline must include the sister in docs generation (`docs:sync`) and publish navigation entries
 - Minimum bootstrap deliverables before first release:
   - README scaffold with canonical layout
   - installer script
   - install guardrail script + workflow
   - canonical sister guardrail script + workflow
-  - docs stubs for install/quickstart/integration
+  - docs baseline listed above
 - New sister README docs must include:
   - standalone guarantee copy
   - all profile install commands (`default`, `desktop`, `terminal`, `server`)
@@ -117,6 +128,8 @@ This document is the single baseline contract for all current and future sisters
 - Local repo responsibility:
   - preserve standalone installability for each sister
   - keep orchestrator UX optional (never a hard runtime dependency)
+- New sister release gate:
+  - canonical docs folder and web docs wiring must be validated in CI before publishing.
 
 ## Change Control
 

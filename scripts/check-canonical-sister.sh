@@ -26,6 +26,17 @@ assert_contains() {
   find_fixed "$pattern" "$@" >/dev/null || fail "Missing required pattern: ${pattern}"
 }
 
+assert_one_of() {
+  local matched=0
+  for candidate in "$@"; do
+    if [ -f "$candidate" ]; then
+      matched=1
+      break
+    fi
+  done
+  [ "$matched" -eq 1 ] || fail "Missing required file (one of): $*"
+}
+
 assert_not_tracked() {
   local path="$1"
   if git ls-files --error-unmatch "$path" >/dev/null 2>&1; then
@@ -56,6 +67,13 @@ assert_image_spacing() {
 assert_file "docs/ecosystem/CANONICAL_SISTER_KIT.md"
 assert_file "scripts/install.sh"
 assert_file "scripts/check-install-commands.sh"
+assert_file "docs/quickstart.md"
+assert_file "docs/concepts.md"
+assert_file "docs/integration-guide.md"
+assert_file "docs/faq.md"
+assert_file "docs/benchmarks.md"
+assert_file "docs/api-reference.md"
+assert_one_of "docs/file-format.md" "docs/LIMITATIONS.md"
 assert_not_tracked "ECOSYSTEM-CONVENTIONS.md"
 assert_no_tracked_prefix "docs/internal/*"
 
@@ -71,6 +89,9 @@ assert_contains '## 9. Env Var Namespace Contract' docs/ecosystem/CANONICAL_SIST
 assert_contains '## 10. New-Sister Bootstrap' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains '## 11. Workspace Orchestrator Contract' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'https://agentralabs.tech/docs/ecosystem-feature-reference' docs/ecosystem/CANONICAL_SISTER_KIT.md
+assert_contains 'https://agentralabs.tech/docs/sister-docs-catalog' docs/ecosystem/CANONICAL_SISTER_KIT.md
+assert_contains 'docs folder required for every sister' docs/ecosystem/CANONICAL_SISTER_KIT.md
+assert_contains 'web docs wiring is mandatory before release' docs/ecosystem/CANONICAL_SISTER_KIT.md
 
 assert_contains '<img src="assets/github-hero-pane.svg"' README.md
 assert_contains '<img src="assets/github-terminal-pane.svg"' README.md
@@ -84,4 +105,4 @@ assert_contains 'Universal MCP entry (works in any MCP client):' scripts/install
 assert_contains 'Quick terminal check:' scripts/install.sh
 assert_contains 'echo "  args: ${SERVER_ARGS_TEXT}"' scripts/install.sh
 
-echo "Canonical sister guardrails passed (memory)."
+echo "Canonical sister guardrails passed."

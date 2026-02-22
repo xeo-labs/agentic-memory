@@ -7,8 +7,8 @@ on:
       - "scripts/install.sh"
       - "scripts/check-install-commands.sh"
       - "scripts/check-canonical-sister.sh"
-      - "docs/ecosystem/CANONICAL_SISTER_KIT.md"
-      - "templates/sister-bootstrap/**"
+      - "docs/**"
+      - "planning-docs/CANONICAL_SISTER_KIT.md"
       - ".github/workflows/canonical-sister-guardrails.yml"
   pull_request:
     paths:
@@ -16,8 +16,8 @@ on:
       - "scripts/install.sh"
       - "scripts/check-install-commands.sh"
       - "scripts/check-canonical-sister.sh"
-      - "docs/ecosystem/CANONICAL_SISTER_KIT.md"
-      - "templates/sister-bootstrap/**"
+      - "docs/**"
+      - "planning-docs/CANONICAL_SISTER_KIT.md"
       - ".github/workflows/canonical-sister-guardrails.yml"
 
 jobs:
