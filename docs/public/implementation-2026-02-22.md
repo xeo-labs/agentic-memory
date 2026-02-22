@@ -16,6 +16,14 @@ This page records the memory-system upgrades implemented in this cycle.
 4. MCP quality tool:
    - New `memory_quality` tool in `agentic-memory-mcp`.
    - Exposes the same reliability report to any MCP client.
+5. Long-horizon storage budget policy:
+   - Added `amem budget` command for projection and budget guidance.
+   - Added runtime policy in MCP session manager:
+     - `AMEM_STORAGE_BUDGET_MODE=auto-rollup|warn|off`
+     - `AMEM_STORAGE_BUDGET_BYTES`
+     - `AMEM_STORAGE_BUDGET_HORIZON_YEARS`
+     - `AMEM_STORAGE_BUDGET_TARGET_FRACTION`
+   - `auto-rollup` mode compresses completed sessions into episode summaries when budget pressure is detected.
 
 ## Why this matters
 
@@ -28,6 +36,7 @@ This page records the memory-system upgrades implemented in this cycle.
 ```bash
 amem quality /tmp/agentra-demo.amem
 amem runtime-sync /tmp/agentra-demo.amem --workspace /Users/omoshola/Documents --max-depth 2
+amem budget /tmp/agentra-demo.amem --horizon-years 20 --max-bytes 2147483648
 agentic-memory-mcp info
 ```
 
@@ -42,4 +51,4 @@ agentic-memory-mcp info
 - `crates/agentic-memory-mcp/src/tools/memory_quality.rs`
 - `crates/agentic-memory-mcp/src/tools/mod.rs`
 - `crates/agentic-memory-mcp/src/tools/registry.rs`
-
+- `crates/agentic-memory-mcp/src/session/manager.rs`

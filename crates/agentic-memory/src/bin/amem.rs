@@ -225,6 +225,17 @@ enum Commands {
         #[arg(long)]
         write_episode: bool,
     },
+    /// Estimate long-horizon storage usage against a fixed budget
+    Budget {
+        /// Path to the .amem file
+        file: PathBuf,
+        /// Max allowed bytes over the horizon
+        #[arg(long, default_value = "2147483648")]
+        max_bytes: u64,
+        /// Projection horizon in years
+        #[arg(long, default_value = "20")]
+        horizon_years: u32,
+    },
     /// BM25 text search over node contents
     TextSearch {
         /// Path to the .amem file
@@ -583,6 +594,11 @@ fn main() {
         }) => {
             commands::cmd_runtime_sync(&file, &workspace, max_depth, session, write_episode, json)
         }
+        Some(Commands::Budget {
+            file,
+            max_bytes,
+            horizon_years,
+        }) => commands::cmd_budget(&file, max_bytes, horizon_years, json),
         Some(Commands::TextSearch {
             file,
             query,

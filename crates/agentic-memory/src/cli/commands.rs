@@ -918,6 +918,63 @@ pub fn cmd_runtime_sync(
     Ok(())
 }
 
+/// Estimate long-horizon storage growth vs configured budget.
+pub fn cmd_budget(path: &Path, max_bytes: u64, horizon_years: u32, json: bool) -> AmemResult<()> {
+    let graph = AmemReader::read_from_file(path)?;
+    let current_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+    let projected = estimate_projected_size(&graph, current_size, horizon_years);
+    let over_budget = current_size > max_bytes || projected.map(|v| v > max_bytes).unwrap_or(false);
+
+    // Daily budget guidance.
+    let years = horizon_years.max(1) as f64;
+    let bytes_per_day = max_bytes as f64 / (years * 365.25);
+
+    if json {
+        let out = serde_json::json!({
+            "file": path.display().to_string(),
+            "current_size_bytes": current_size,
+            "projected_size_bytes": projected,
+            "max_budget_bytes": max_bytes,
+            "horizon_years": horizon_years,
+            "over_budget": over_budget,
+            "daily_budget_bytes": bytes_per_day,
+            "daily_budget_kb": bytes_per_day / 1024.0,
+            "guidance": {
+                "recommended_policy_mode": if over_budget { "auto-rollup" } else { "warn" },
+                "env": {
+                    "AMEM_STORAGE_BUDGET_MODE": "auto-rollup|warn|off",
+                    "AMEM_STORAGE_BUDGET_BYTES": max_bytes,
+                    "AMEM_STORAGE_BUDGET_HORIZON_YEARS": horizon_years
+                }
+            }
+        });
+        println!("{}", serde_json::to_string_pretty(&out).unwrap_or_default());
+    } else {
+        println!("Storage budget estimate for {}", path.display());
+        println!("  Current size: {}", format_size(current_size));
+        if let Some(v) = projected {
+            println!("  Projected size ({}y): {}", horizon_years, format_size(v));
+        } else {
+            println!(
+                "  Projected size ({}y): unavailable (insufficient timeline history)",
+                horizon_years
+            );
+        }
+        println!("  Budget target: {}", format_size(max_bytes));
+        println!("  Over budget: {}", if over_budget { "yes" } else { "no" });
+        println!(
+            "  Daily budget guidance: {:.1} KB/day",
+            bytes_per_day / 1024.0
+        );
+        println!("  Suggested env:");
+        println!("    AMEM_STORAGE_BUDGET_MODE=auto-rollup");
+        println!("    AMEM_STORAGE_BUDGET_BYTES={}", max_bytes);
+        println!("    AMEM_STORAGE_BUDGET_HORIZON_YEARS={}", horizon_years);
+    }
+
+    Ok(())
+}
+
 fn scan_workspace_artifacts(root: &Path, max_depth: u32) -> ArtifactScanReport {
     let mut report = ArtifactScanReport::default();
     scan_dir_recursive(root, 0, max_depth, &mut report);
@@ -972,6 +1029,33 @@ fn should_skip_dir(path: &Path) -> bool {
         name,
         ".git" | "target" | "node_modules" | ".venv" | ".idea" | ".vscode" | "__pycache__"
     )
+}
+
+fn estimate_projected_size(
+    graph: &MemoryGraph,
+    current_size: u64,
+    horizon_years: u32,
+) -> Option<u64> {
+    if current_size == 0 || graph.node_count() < 2 {
+        return None;
+    }
+
+    let mut min_ts = u64::MAX;
+    let mut max_ts = 0u64;
+    for node in graph.nodes() {
+        min_ts = min_ts.min(node.created_at);
+        max_ts = max_ts.max(node.created_at);
+    }
+    if min_ts == u64::MAX || max_ts <= min_ts {
+        return None;
+    }
+
+    let span_secs_raw = (max_ts - min_ts) / 1_000_000;
+    let span_secs = span_secs_raw.max(7 * 24 * 3600) as f64;
+    let per_sec = current_size as f64 / span_secs;
+    let horizon_secs = (horizon_years.max(1) as f64) * 365.25 * 24.0 * 3600.0;
+    let projected = (per_sec * horizon_secs).round();
+    Some(projected.max(0.0).min(u64::MAX as f64) as u64)
 }
 
 fn format_size(bytes: u64) -> String {

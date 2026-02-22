@@ -22,6 +22,7 @@ amem add my_agent.amem fact "The project deadline is March 15, 2026" --confidenc
 amem search my_agent.amem --event-type fact
 amem quality my_agent.amem
 amem runtime-sync my_agent.amem --workspace . --write-episode
+amem budget my_agent.amem --horizon-years 20 --max-bytes 2147483648
 ```
 
 ## 4. Start MCP server
@@ -41,3 +42,19 @@ agentic-memory-mcp info
 ```
 
 Expected tools include `memory_quality`.
+
+## 6. Enable automatic long-horizon budget enforcement
+
+```bash
+export AMEM_STORAGE_BUDGET_MODE=auto-rollup
+export AMEM_STORAGE_BUDGET_BYTES=2147483648
+export AMEM_STORAGE_BUDGET_HORIZON_YEARS=20
+```
+
+Optional:
+
+```bash
+export AMEM_STORAGE_BUDGET_TARGET_FRACTION=0.85
+```
+
+When enabled, maintenance ticks auto-roll up completed sessions into episode summaries when budget pressure is detected.

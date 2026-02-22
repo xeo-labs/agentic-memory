@@ -30,6 +30,10 @@ const DEFAULT_WARM_MIN_DECAY: f32 = 0.3;
 const DEFAULT_SLA_MAX_MUTATIONS_PER_MIN: u32 = 240;
 /// Default interval for writing health-ledger snapshots.
 const DEFAULT_HEALTH_LEDGER_EMIT_SECS: u64 = 30;
+/// Default long-horizon storage budget target (2 GiB over 20 years).
+const DEFAULT_STORAGE_BUDGET_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+/// Default storage budget projection horizon.
+const DEFAULT_STORAGE_BUDGET_HORIZON_YEARS: u32 = 20;
 /// Current `.amem` storage version used by this server.
 const CURRENT_AMEM_VERSION: u32 = 1;
 
@@ -44,6 +48,13 @@ enum AutonomicProfile {
 enum StorageMigrationPolicy {
     AutoSafe,
     Strict,
+    Off,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StorageBudgetMode {
+    AutoRollup,
+    Warn,
     Off,
 }
 
@@ -136,6 +147,25 @@ impl StorageMigrationPolicy {
     }
 }
 
+impl StorageBudgetMode {
+    fn from_env(name: &str) -> Self {
+        let raw = read_env_string(name).unwrap_or_else(|| "auto-rollup".to_string());
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "warn" => Self::Warn,
+            "off" | "disabled" | "none" => Self::Off,
+            _ => Self::AutoRollup,
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::AutoRollup => "auto-rollup",
+            Self::Warn => "warn",
+            Self::Off => "off",
+        }
+    }
+}
+
 /// Manages the memory graph lifecycle, file I/O, and session state.
 pub struct SessionManager {
     graph: MemoryGraph,
@@ -167,6 +197,11 @@ pub struct SessionManager {
     maintenance_throttle_count: u64,
     last_health_ledger_emit: Instant,
     health_ledger_emit_interval: Duration,
+    storage_budget_mode: StorageBudgetMode,
+    storage_budget_max_bytes: u64,
+    storage_budget_horizon_years: u32,
+    storage_budget_target_fraction: f32,
+    storage_budget_rollup_count: u64,
 }
 
 impl SessionManager {
@@ -250,6 +285,16 @@ impl SessionManager {
             )
             .max(5),
         );
+        let storage_budget_mode = StorageBudgetMode::from_env("AMEM_STORAGE_BUDGET_MODE");
+        let storage_budget_max_bytes =
+            read_env_u64("AMEM_STORAGE_BUDGET_BYTES", DEFAULT_STORAGE_BUDGET_BYTES).max(1);
+        let storage_budget_horizon_years = read_env_u32(
+            "AMEM_STORAGE_BUDGET_HORIZON_YEARS",
+            DEFAULT_STORAGE_BUDGET_HORIZON_YEARS,
+        )
+        .max(1);
+        let storage_budget_target_fraction =
+            read_env_f32("AMEM_STORAGE_BUDGET_TARGET_FRACTION", 0.85).clamp(0.50, 0.99);
 
         let mut manager = Self {
             graph,
@@ -283,6 +328,11 @@ impl SessionManager {
                 .checked_sub(health_ledger_emit_interval)
                 .unwrap_or_else(Instant::now),
             health_ledger_emit_interval,
+            storage_budget_mode,
+            storage_budget_max_bytes,
+            storage_budget_horizon_years,
+            storage_budget_target_fraction,
+            storage_budget_rollup_count: 0,
         };
 
         if let Some(version) = legacy_version {
@@ -422,6 +472,7 @@ impl SessionManager {
 
         self.maybe_run_sleep_cycle()?;
         self.maybe_auto_save()?;
+        self.maybe_enforce_storage_budget()?;
         self.maybe_auto_backup()?;
         self.emit_health_ledger("normal")?;
         Ok(())
@@ -593,6 +644,12 @@ impl SessionManager {
         let path = dir.join("agentic-memory.json");
         let tmp = dir.join("agentic-memory.json.tmp");
         let (hot, warm, cold) = self.tier_counts();
+        let current_size_bytes = self.current_file_size_bytes();
+        let projected_size_bytes = self.projected_file_size_bytes(current_size_bytes);
+        let over_budget = current_size_bytes > self.storage_budget_max_bytes
+            || projected_size_bytes
+                .map(|v| v > self.storage_budget_max_bytes)
+                .unwrap_or(false);
         let payload = serde_json::json!({
             "project": "AgenticMemory",
             "timestamp": chrono::Utc::now().to_rfc3339(),
@@ -612,6 +669,16 @@ impl SessionManager {
                 "dirty": self.dirty,
                 "save_generation": self.save_generation,
                 "backup_retention": self.backup_retention,
+            },
+            "storage_budget": {
+                "mode": self.storage_budget_mode.as_str(),
+                "max_bytes": self.storage_budget_max_bytes,
+                "horizon_years": self.storage_budget_horizon_years,
+                "target_fraction": self.storage_budget_target_fraction,
+                "current_size_bytes": current_size_bytes,
+                "projected_size_bytes": projected_size_bytes,
+                "over_budget": over_budget,
+                "rollup_count": self.storage_budget_rollup_count,
             },
             "graph": {
                 "nodes": self.graph.node_count(),
@@ -648,6 +715,13 @@ impl Drop for SessionManager {
 
 impl SessionManager {
     fn auto_archive_completed_sessions(&mut self) -> McpResult<usize> {
+        self.auto_archive_completed_sessions_with_min(self.archive_min_session_nodes)
+    }
+
+    fn auto_archive_completed_sessions_with_min(
+        &mut self,
+        min_session_nodes: usize,
+    ) -> McpResult<usize> {
         let mut session_ids = self.graph.session_index().session_ids();
         session_ids.sort_unstable();
 
@@ -685,7 +759,7 @@ impl SessionManager {
                 }
             }
 
-            if has_episode || event_nodes < self.archive_min_session_nodes {
+            if has_episode || event_nodes < min_session_nodes {
                 continue;
             }
 
@@ -704,6 +778,113 @@ impl SessionManager {
         }
 
         Ok(archived)
+    }
+
+    fn maybe_enforce_storage_budget(&mut self) -> McpResult<()> {
+        if self.storage_budget_mode == StorageBudgetMode::Off {
+            return Ok(());
+        }
+
+        let current_size = self.current_file_size_bytes();
+        if current_size == 0 {
+            return Ok(());
+        }
+        let projected = self.projected_file_size_bytes(current_size);
+        let over_current = current_size > self.storage_budget_max_bytes;
+        let over_projected = projected
+            .map(|v| v > self.storage_budget_max_bytes)
+            .unwrap_or(false);
+
+        if !over_current && !over_projected {
+            return Ok(());
+        }
+
+        if self.storage_budget_mode == StorageBudgetMode::Warn {
+            tracing::warn!(
+                "Storage budget warning: current={} projected={:?} budget={} (mode=warn)",
+                current_size,
+                projected,
+                self.storage_budget_max_bytes
+            );
+            return Ok(());
+        }
+
+        let target_bytes = ((self.storage_budget_max_bytes as f64
+            * self.storage_budget_target_fraction as f64)
+            .round() as u64)
+            .max(1);
+        let mut rollup_count = 0usize;
+        let mut threshold = self.archive_min_session_nodes.saturating_div(2).max(1);
+
+        for _ in 0..3 {
+            let archived = self.auto_archive_completed_sessions_with_min(threshold)?;
+            if archived == 0 {
+                if threshold > 1 {
+                    threshold = 1;
+                    continue;
+                }
+                break;
+            }
+            rollup_count += archived;
+            self.dirty = true;
+            self.save()?;
+            let new_size = self.current_file_size_bytes();
+            if new_size <= target_bytes {
+                break;
+            }
+            threshold = 1;
+        }
+
+        if rollup_count > 0 {
+            self.storage_budget_rollup_count = self
+                .storage_budget_rollup_count
+                .saturating_add(rollup_count as u64);
+            tracing::info!(
+                "Storage budget rollup applied: archived_sessions={} budget={} target={} current={}",
+                rollup_count,
+                self.storage_budget_max_bytes,
+                target_bytes,
+                self.current_file_size_bytes()
+            );
+        } else {
+            tracing::warn!(
+                "Storage budget exceeded but no completed sessions eligible for rollup (current={} projected={:?} budget={})",
+                current_size,
+                projected,
+                self.storage_budget_max_bytes
+            );
+        }
+
+        Ok(())
+    }
+
+    fn current_file_size_bytes(&self) -> u64 {
+        std::fs::metadata(&self.file_path)
+            .map(|m| m.len())
+            .unwrap_or(0)
+    }
+
+    fn projected_file_size_bytes(&self, current_size: u64) -> Option<u64> {
+        if current_size == 0 || self.graph.node_count() < 2 {
+            return None;
+        }
+        let mut min_ts = u64::MAX;
+        let mut max_ts = 0u64;
+        for node in self.graph.nodes() {
+            min_ts = min_ts.min(node.created_at);
+            max_ts = max_ts.max(node.created_at);
+        }
+        if min_ts == u64::MAX || max_ts <= min_ts {
+            return None;
+        }
+
+        let span_secs_raw = (max_ts - min_ts) / 1_000_000;
+        // Clamp to at least one week to avoid unstable extrapolation on tiny windows.
+        let span_secs = span_secs_raw.max(7 * 24 * 3600) as f64;
+        let per_sec = current_size as f64 / span_secs;
+        let horizon_secs = (self.storage_budget_horizon_years as f64) * 365.25 * 24.0 * 3600.0;
+        let projected = (per_sec * horizon_secs).round();
+        Some(projected.max(0.0).min(u64::MAX as f64) as u64)
     }
 
     fn tier_counts(&self) -> (usize, usize, usize) {
@@ -866,4 +1047,69 @@ fn resolve_health_ledger_dir() -> PathBuf {
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));
     home.join(".agentra").join("health-ledger")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn budget_projection_available_with_timeline() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let brain = dir.path().join("projection.amem");
+        let mut manager = SessionManager::open(brain.to_str().expect("path")).expect("open");
+
+        let (id_a, _) = manager
+            .add_event(EventType::Fact, "old fact", 0.9, vec![])
+            .expect("add fact");
+        let (_id_b, _) = manager
+            .add_event(EventType::Fact, "new fact", 0.9, vec![])
+            .expect("add fact");
+
+        {
+            let graph = manager.graph_mut();
+            let old = graph.get_node_mut(id_a).expect("node");
+            old.created_at = old.created_at.saturating_sub(15 * 24 * 3600 * 1_000_000);
+        }
+        manager.save().expect("save");
+        let size = manager.current_file_size_bytes();
+        let projected = manager.projected_file_size_bytes(size);
+        assert!(size > 0);
+        assert!(projected.is_some());
+    }
+
+    #[test]
+    fn budget_auto_rollup_archives_completed_session() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let brain = dir.path().join("rollup.amem");
+        let mut manager = SessionManager::open(brain.to_str().expect("path")).expect("open");
+
+        // Build session 1 with enough content, then move to session 2 so session 1 is completed.
+        let _ = manager
+            .add_event(EventType::Fact, "alpha", 0.8, vec![])
+            .expect("add");
+        let _ = manager
+            .add_event(EventType::Decision, "beta", 0.9, vec![])
+            .expect("add");
+        manager.start_session(Some(2)).expect("session");
+        manager.save().expect("save");
+
+        // Force tiny budget to trigger rollup.
+        manager.storage_budget_mode = StorageBudgetMode::AutoRollup;
+        manager.storage_budget_max_bytes = 1;
+        manager.storage_budget_target_fraction = 0.5;
+
+        manager
+            .maybe_enforce_storage_budget()
+            .expect("enforce budget");
+
+        let episode_count = manager
+            .graph()
+            .nodes()
+            .iter()
+            .filter(|n| n.event_type == EventType::Episode)
+            .count();
+        assert!(episode_count >= 1);
+        assert!(manager.storage_budget_rollup_count >= 1);
+    }
 }

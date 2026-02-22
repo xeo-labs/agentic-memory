@@ -43,3 +43,20 @@ export AGENTIC_TOKEN="$(openssl rand -hex 32)"
 ```
 
 Server deployments must sync `.amem/.acb/.avis` artifacts to server storage before runtime.
+
+## Long-horizon storage budget policy
+
+To target ~1-2 GB over long horizons (for example 20 years), configure:
+
+```bash
+export AMEM_STORAGE_BUDGET_MODE=auto-rollup
+export AMEM_STORAGE_BUDGET_BYTES=2147483648
+export AMEM_STORAGE_BUDGET_HORIZON_YEARS=20
+export AMEM_STORAGE_BUDGET_TARGET_FRACTION=0.85
+```
+
+Modes:
+
+- `auto-rollup`: auto-archive completed sessions into episode summaries when budget pressure is detected.
+- `warn`: emit warnings only.
+- `off`: disable policy.

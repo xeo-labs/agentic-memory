@@ -26,6 +26,7 @@ amem decay
 amem stats
 amem quality
 amem runtime-sync
+amem budget
 amem text-search
 amem hybrid-search
 amem centrality
@@ -58,6 +59,7 @@ amem quality my_agent.amem --low-confidence 0.4 --stale-decay 0.2 --limit 25
 
 amem runtime-sync my_agent.amem --workspace . --max-depth 4
 amem runtime-sync my_agent.amem --workspace . --write-episode
+amem budget my_agent.amem --horizon-years 20 --max-bytes 2147483648
 ```
 
 ## MCP quality tool
