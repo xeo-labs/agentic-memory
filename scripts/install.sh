@@ -29,6 +29,7 @@ VERSION="latest"
 PROFILE="${AGENTRA_INSTALL_PROFILE:-desktop}"
 DRY_RUN=false
 BAR_ONLY="${AGENTRA_INSTALL_BAR_ONLY:-1}"
+MCP_ENTRYPOINT=""
 SERVER_ARGS_JSON='["serve"]'
 SERVER_ARGS_TEXT='["serve"]'
 SERVER_CHECK_CMD_SUFFIX=" serve"
@@ -48,6 +49,8 @@ for arg in "$@"; do
             ;;
     esac
 done
+
+MCP_ENTRYPOINT="${INSTALL_DIR}/${BINARY_NAME}-agentra"
 
 # ── Progress output (bar-only mode by default) ───────────────────────
 exec 3>&1
@@ -245,6 +248,67 @@ install_from_source() {
     echo "  Installed from source to ${INSTALL_DIR}/amem and ${INSTALL_DIR}/${BINARY_NAME}"
 }
 
+install_mcp_entrypoint() {
+    if [ "$DRY_RUN" = true ]; then
+        echo "  [dry-run] Would install MCP launcher to: ${MCP_ENTRYPOINT}"
+        return
+    fi
+
+    mkdir -p "${INSTALL_DIR}"
+    cat >"${MCP_ENTRYPOINT}" <<EOF
+#!/usr/bin/env bash
+set -eo pipefail
+
+BIN="${INSTALL_DIR}/${BINARY_NAME}"
+
+find_memory() {
+    local candidate
+    local found=""
+
+    for candidate in \
+        "\${AGENTRA_AMEM_PATH:-}" \
+        "\${AGENTRA_MEMORY_PATH:-}" \
+        "\$HOME/.brain.amem" \
+        "\$HOME/.agentra/memory/default.amem" \
+        "\$PWD/.brain.amem" \
+        "\$PWD/memory.amem"; do
+        if [ -n "\$candidate" ] && [ -f "\$candidate" ]; then
+            found="\$candidate"
+            break
+        fi
+    done
+
+    [ -n "\$found" ] && printf '%s' "\$found"
+}
+
+args=("\$@")
+has_memory=0
+has_command=0
+
+for arg in "\${args[@]}"; do
+    case "\$arg" in
+        -h|--help|-V|--version) has_command=1 ;;
+        -m|--memory|--memory=*) has_memory=1 ;;
+        serve|validate|info|delete|export|compact|stats|help) has_command=1 ;;
+    esac
+done
+
+if [ "\$has_memory" -eq 0 ]; then
+    memory_path="\$(find_memory || true)"
+    if [ -n "\$memory_path" ]; then
+        args=(--memory "\$memory_path" "\${args[@]}")
+    fi
+fi
+
+if [ "\$has_command" -eq 0 ]; then
+    args+=("serve")
+fi
+
+exec "\$BIN" "\${args[@]}"
+EOF
+    chmod +x "${MCP_ENTRYPOINT}"
+}
+
 # ── Merge MCP server into a config file ───────────────────────────────
 # Uses jq to add our server WITHOUT touching other servers.
 merge_config() {
@@ -262,18 +326,44 @@ merge_config() {
     if [ -f "$config_file" ] && [ -s "$config_file" ]; then
         echo "    Existing config found, merging..."
         jq --arg key "$SERVER_KEY" \
-           --arg cmd "${INSTALL_DIR}/${BINARY_NAME}" \
+           --arg cmd "${MCP_ENTRYPOINT}" \
            --argjson args "$SERVER_ARGS_JSON" \
            '.mcpServers //= {} | .mcpServers[$key] = {"command": $cmd, "args": $args}' \
            "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
     else
         echo "    Creating new config..."
         jq -n --arg key "$SERVER_KEY" \
-              --arg cmd "${INSTALL_DIR}/${BINARY_NAME}" \
+              --arg cmd "${MCP_ENTRYPOINT}" \
               --argjson args "$SERVER_ARGS_JSON" \
            '{ "mcpServers": { ($key): { "command": $cmd, "args": $args } } }' \
            > "$config_file"
     fi
+}
+
+upsert_codex_config_block() {
+    local codex_config="$1"
+    local tmp_file
+    tmp_file="$(mktemp)"
+
+    if [ -f "$codex_config" ]; then
+        awk -v section="[mcp_servers.${SERVER_KEY}]" '
+            BEGIN { skip = 0 }
+            $0 == section { skip = 1; next }
+            skip && /^\[.*\]$/ { skip = 0 }
+            !skip { print }
+        ' "$codex_config" > "$tmp_file"
+    else
+        : > "$tmp_file"
+    fi
+
+    {
+        echo ""
+        echo "[mcp_servers.${SERVER_KEY}]"
+        echo "command = \"${MCP_ENTRYPOINT}\""
+        echo "args = ${SERVER_ARGS_JSON}"
+    } >> "$tmp_file"
+
+    mv "$tmp_file" "$codex_config"
 }
 
 record_mcp_client() {
@@ -343,7 +433,7 @@ configure_claude_code() {
 configure_codex() {
     local codex_home="${CODEX_HOME:-$HOME/.codex}"
     local codex_config="${codex_home}/config.toml"
-    local codex_cmd_args=("${INSTALL_DIR}/${BINARY_NAME}" "serve")
+    local codex_cmd_args=("${MCP_ENTRYPOINT}" "serve")
 
     if ! command -v codex >/dev/null 2>&1 && [ ! -d "$codex_home" ] && [ ! -f "$codex_config" ]; then
         return
@@ -364,14 +454,7 @@ configure_codex() {
         if [ ! -f "$codex_config" ]; then
             touch "$codex_config"
         fi
-        if ! grep -q "^\[mcp_servers\.${SERVER_KEY}\]$" "$codex_config"; then
-            {
-                echo ""
-                echo "[mcp_servers.${SERVER_KEY}]"
-                echo "command = \"${INSTALL_DIR}/${BINARY_NAME}\""
-                echo "args = ${SERVER_ARGS_JSON}"
-            } >> "$codex_config"
-        fi
+        upsert_codex_config_block "$codex_config"
     fi
     echo "  Done"
     record_mcp_client "Codex"
@@ -442,7 +525,7 @@ print_client_help() {
     fi
     echo ""
     echo "Universal MCP entry (works in any MCP client):"
-    echo "  command: ${INSTALL_DIR}/${BINARY_NAME}"
+    echo "  command: ${MCP_ENTRYPOINT}"
     echo "  args: ${SERVER_ARGS_TEXT}"
     echo ""
     echo "Quick terminal check:"
@@ -475,7 +558,7 @@ print_profile_help() {
 print_terminal_server_help() {
     echo ""
     echo "Manual MCP config for any client:"
-    echo "  command: ${INSTALL_DIR}/${BINARY_NAME}"
+    echo "  command: ${MCP_ENTRYPOINT}"
     echo "  args: ${SERVER_ARGS_TEXT}"
     echo ""
     echo "Server authentication setup:"
@@ -492,7 +575,7 @@ print_terminal_server_help() {
 print_post_install_next_steps() {
     echo "" >&3
     echo "What happens after installation:" >&3
-    echo "  1. ${SERVER_KEY} was installed as MCP server command: ${INSTALL_DIR}/${BINARY_NAME}" >&3
+    echo "  1. ${SERVER_KEY} was installed as MCP server command: ${MCP_ENTRYPOINT}" >&3
     if [ "$PROFILE" = "server" ]; then
         echo "  2. Generate a token (openssl rand -hex 32) and set AGENTIC_TOKEN on the server." >&3
         echo "  3. If artifacts were created on another machine, sync .amem/.acb/.avis files to this server." >&3
@@ -500,8 +583,9 @@ print_post_install_next_steps() {
         echo "  5. Optional feedback: open https://github.com/agentralabs/agentic-memory/issues" >&3
     else
         echo "  2. Restart your MCP client/system so it reloads MCP config." >&3
-        echo "  3. After restart, confirm '${SERVER_KEY}' appears in your MCP server list." >&3
-        echo "  4. Optional feedback: open https://github.com/agentralabs/agentic-memory/issues" >&3
+        echo "  3. ${SERVER_KEY} now auto-detects local .amem files at startup when available." >&3
+        echo "  4. After restart, confirm '${SERVER_KEY}' appears in your MCP server list." >&3
+        echo "  5. Optional feedback: open https://github.com/agentralabs/agentic-memory/issues" >&3
     fi
 }
 
@@ -554,6 +638,9 @@ main() {
     if [ "$installed_from_release" = false ]; then
         install_from_source
     fi
+
+    set_progress 88 "Installing MCP launcher"
+    install_mcp_entrypoint
 
     set_progress 90 "Applying profile setup"
     if [ "$PROFILE" = "desktop" ] || [ "$PROFILE" = "terminal" ]; then
