@@ -66,6 +66,14 @@ amem budget my_agent.amem --horizon-years 20 --max-bytes 2147483648
 
 - `memory_quality` returns a graph reliability summary (confidence, staleness, orphan nodes, unsupported decisions).
 
+## MCP runtime capture controls
+
+```bash
+export AMEM_AUTO_CAPTURE_MODE=safe
+export AMEM_AUTO_CAPTURE_REDACT=true
+export AMEM_AUTO_CAPTURE_MAX_CHARS=2048
+```
+
 ## Universal MCP entry
 
 ```json

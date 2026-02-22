@@ -327,7 +327,8 @@ async fn test_session_handoff() {
 
         let session_nodes = read_resource(&handler, "amem://session/200").await;
         let nodes = session_nodes["nodes"].as_array().unwrap();
-        assert_eq!(nodes.len(), 5); // 2 from A + 2 from B + 1 episode
+        // 2 from A + 2 from B + 1 episode (+ optional auto-captured feedback context)
+        assert!(nodes.len() >= 5);
 
         let episodes = call_tool(
             &handler,

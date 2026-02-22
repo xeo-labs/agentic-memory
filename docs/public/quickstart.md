@@ -58,3 +58,17 @@ export AMEM_STORAGE_BUDGET_TARGET_FRACTION=0.85
 ```
 
 When enabled, maintenance ticks auto-roll up completed sessions into episode summaries when budget pressure is detected.
+
+## 7. Enable prompt and feedback auto-capture
+
+```bash
+export AMEM_AUTO_CAPTURE_MODE=safe
+export AMEM_AUTO_CAPTURE_REDACT=true
+export AMEM_AUTO_CAPTURE_MAX_CHARS=2048
+```
+
+Modes:
+
+- `safe`: capture prompt templates plus explicit feedback/session summary fields (`feedback`, `summary`, `note`).
+- `full`: capture broader tool input text (except direct `memory_add` payload duplication).
+- `off`: disable auto-capture.

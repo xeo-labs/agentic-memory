@@ -241,6 +241,26 @@ async fn test_all_prompts() {
 }
 
 #[tokio::test]
+async fn test_prompt_auto_capture_persists_context() {
+    let mut client = create_client();
+    client.initialize().await;
+
+    let remember = client
+        .get_prompt(
+            "remember",
+            Some(json!({"information": "Capture this prompt", "context": "integration"})),
+        )
+        .await;
+    assert!(remember["result"]["messages"].is_array());
+
+    let recent = client.read_resource("amem://graph/recent").await;
+    let recent_text = recent["result"]["contents"][0]["text"].as_str().unwrap();
+    assert!(recent_text.contains("[auto-capture][prompt]"));
+
+    client.shutdown().await;
+}
+
+#[tokio::test]
 async fn test_error_handling_integration() {
     let mut client = create_client();
     client.initialize().await;

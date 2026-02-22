@@ -276,6 +276,7 @@ cargo install agentic-memory-mcp       # MCP server
 | Backup + retention | Rolling backups with bounded retention | `AMEM_AUTO_BACKUP_SECS`, `AMEM_AUTO_BACKUP_RETENTION`, `AMEM_AUTO_BACKUP_DIR` |
 | Storage migration | Policy-gated with checkpointed auto-safe path | `AMEM_STORAGE_MIGRATION_POLICY=auto-safe|strict|off` |
 | Storage budget policy | 20-year projection + auto-rollup when budget pressure appears | `AMEM_STORAGE_BUDGET_MODE=auto-rollup|warn|off`, `AMEM_STORAGE_BUDGET_BYTES`, `AMEM_STORAGE_BUDGET_HORIZON_YEARS`, `AMEM_STORAGE_BUDGET_TARGET_FRACTION` |
+| Prompt + feedback auto-capture | Captures MCP prompt/tool context into `.amem` with privacy controls | `AMEM_AUTO_CAPTURE_MODE=safe|full|off`, `AMEM_AUTO_CAPTURE_REDACT=true|false`, `AMEM_AUTO_CAPTURE_MAX_CHARS` |
 | Maintenance throttling | SLA-aware under sustained mutation load | `AMEM_SLA_MAX_MUTATIONS_PER_MIN` |
 | Health ledger | Periodic operational snapshots (default: `~/.agentra/health-ledger`) | `AMEM_HEALTH_LEDGER_DIR`, `AGENTRA_HEALTH_LEDGER_DIR`, `AMEM_HEALTH_LEDGER_EMIT_SECS` |
 

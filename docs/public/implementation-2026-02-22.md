@@ -24,6 +24,14 @@ This page records the memory-system upgrades implemented in this cycle.
      - `AMEM_STORAGE_BUDGET_HORIZON_YEARS`
      - `AMEM_STORAGE_BUDGET_TARGET_FRACTION`
    - `auto-rollup` mode compresses completed sessions into episode summaries when budget pressure is detected.
+6. Prompt + feedback auto-capture:
+   - MCP `tools/call` and `prompts/get` now support automatic capture into `.amem`.
+   - Runtime policy:
+     - `AMEM_AUTO_CAPTURE_MODE=safe|full|off`
+     - `AMEM_AUTO_CAPTURE_REDACT=true|false`
+     - `AMEM_AUTO_CAPTURE_MAX_CHARS`
+   - `safe` mode focuses on prompt templates and explicit feedback/session-summary fields.
+   - `full` mode captures broader tool input context while skipping direct `memory_add` payload duplication.
 
 ## Why this matters
 

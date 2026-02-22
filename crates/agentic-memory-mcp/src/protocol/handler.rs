@@ -148,6 +148,19 @@ impl ProtocolHandler {
             .map_err(|e| McpError::InvalidParams(e.to_string()))?
             .ok_or_else(|| McpError::InvalidParams("Tool call params required".to_string()))?;
 
+        {
+            let mut session = self.session.lock().await;
+            if let Err(e) =
+                session.capture_tool_call(&call_params.name, call_params.arguments.as_ref())
+            {
+                tracing::warn!(
+                    "Auto-capture skipped for tool {} due to error: {}",
+                    call_params.name,
+                    e
+                );
+            }
+        }
+
         let result =
             ToolRegistry::call(&call_params.name, call_params.arguments, &self.session).await?;
 
@@ -196,6 +209,19 @@ impl ProtocolHandler {
             .transpose()
             .map_err(|e| McpError::InvalidParams(e.to_string()))?
             .ok_or_else(|| McpError::InvalidParams("Prompt get params required".to_string()))?;
+
+        {
+            let mut session = self.session.lock().await;
+            if let Err(e) =
+                session.capture_prompt_request(&get_params.name, get_params.arguments.as_ref())
+            {
+                tracing::warn!(
+                    "Auto-capture skipped for prompt {} due to error: {}",
+                    get_params.name,
+                    e
+                );
+            }
+        }
 
         let result =
             PromptRegistry::get(&get_params.name, get_params.arguments, &self.session).await?;

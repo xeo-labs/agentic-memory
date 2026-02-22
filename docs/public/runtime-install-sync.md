@@ -60,3 +60,19 @@ Modes:
 - `auto-rollup`: auto-archive completed sessions into episode summaries when budget pressure is detected.
 - `warn`: emit warnings only.
 - `off`: disable policy.
+
+## Prompt and feedback capture policy
+
+For automatic prompt/context persistence into `.amem`, configure:
+
+```bash
+export AMEM_AUTO_CAPTURE_MODE=safe
+export AMEM_AUTO_CAPTURE_REDACT=true
+export AMEM_AUTO_CAPTURE_MAX_CHARS=2048
+```
+
+Modes:
+
+- `safe`: capture prompt template input and feedback-style fields with minimal noise.
+- `full`: capture broader tool input context (except direct `memory_add` duplication).
+- `off`: disable auto-capture.

@@ -9,6 +9,7 @@ use agentic_memory::{
     AmemReader, AmemWriter, CognitiveEventBuilder, Edge, EdgeType, EventType, MemoryGraph,
     QueryEngine, WriteEngine,
 };
+use serde_json::Value;
 
 use crate::types::{McpError, McpResult};
 
@@ -34,6 +35,8 @@ const DEFAULT_HEALTH_LEDGER_EMIT_SECS: u64 = 30;
 const DEFAULT_STORAGE_BUDGET_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 /// Default storage budget projection horizon.
 const DEFAULT_STORAGE_BUDGET_HORIZON_YEARS: u32 = 20;
+/// Default maximum chars persisted for one auto-captured prompt/feedback item.
+const DEFAULT_AUTO_CAPTURE_MAX_CHARS: usize = 2048;
 /// Current `.amem` storage version used by this server.
 const CURRENT_AMEM_VERSION: u32 = 1;
 
@@ -55,6 +58,16 @@ enum StorageMigrationPolicy {
 enum StorageBudgetMode {
     AutoRollup,
     Warn,
+    Off,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AutoCaptureMode {
+    /// Capture prompt-focused events and feedback context.
+    Safe,
+    /// Capture broader tool input text (except explicit memory_add payload duplication).
+    Full,
+    /// Disable automatic capture.
     Off,
 }
 
@@ -166,6 +179,25 @@ impl StorageBudgetMode {
     }
 }
 
+impl AutoCaptureMode {
+    fn from_env(name: &str) -> Self {
+        let raw = read_env_string(name).unwrap_or_else(|| "safe".to_string());
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "full" => Self::Full,
+            "off" | "disabled" | "none" => Self::Off,
+            _ => Self::Safe,
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Safe => "safe",
+            Self::Full => "full",
+            Self::Off => "off",
+        }
+    }
+}
+
 /// Manages the memory graph lifecycle, file I/O, and session state.
 pub struct SessionManager {
     graph: MemoryGraph,
@@ -202,6 +234,10 @@ pub struct SessionManager {
     storage_budget_horizon_years: u32,
     storage_budget_target_fraction: f32,
     storage_budget_rollup_count: u64,
+    auto_capture_mode: AutoCaptureMode,
+    auto_capture_redact: bool,
+    auto_capture_max_chars: usize,
+    auto_capture_count: u64,
 }
 
 impl SessionManager {
@@ -295,6 +331,13 @@ impl SessionManager {
         .max(1);
         let storage_budget_target_fraction =
             read_env_f32("AMEM_STORAGE_BUDGET_TARGET_FRACTION", 0.85).clamp(0.50, 0.99);
+        let auto_capture_mode = AutoCaptureMode::from_env("AMEM_AUTO_CAPTURE_MODE");
+        let auto_capture_redact = read_env_bool("AMEM_AUTO_CAPTURE_REDACT", true);
+        let auto_capture_max_chars = read_env_usize(
+            "AMEM_AUTO_CAPTURE_MAX_CHARS",
+            DEFAULT_AUTO_CAPTURE_MAX_CHARS,
+        )
+        .clamp(256, 16384);
 
         let mut manager = Self {
             graph,
@@ -333,6 +376,10 @@ impl SessionManager {
             storage_budget_horizon_years,
             storage_budget_target_fraction,
             storage_budget_rollup_count: 0,
+            auto_capture_mode,
+            auto_capture_redact,
+            auto_capture_max_chars,
+            auto_capture_count: 0,
         };
 
         if let Some(version) = legacy_version {
@@ -553,6 +600,42 @@ impl SessionManager {
             .min(self.sleep_cycle_interval)
     }
 
+    /// Capture a prompt template invocation (`prompts/get`) into memory.
+    pub fn capture_prompt_request(
+        &mut self,
+        prompt_name: &str,
+        arguments: Option<&Value>,
+    ) -> McpResult<Option<u64>> {
+        if self.auto_capture_mode == AutoCaptureMode::Off {
+            return Ok(None);
+        }
+        match extract_prompt_capture_text(prompt_name, arguments)? {
+            Some(text) => self.persist_auto_capture(EventType::Fact, &text, 0.90),
+            None => Ok(None),
+        }
+    }
+
+    /// Capture a tool call input context into memory based on capture mode.
+    pub fn capture_tool_call(
+        &mut self,
+        tool_name: &str,
+        arguments: Option<&Value>,
+    ) -> McpResult<Option<u64>> {
+        if self.auto_capture_mode == AutoCaptureMode::Off {
+            return Ok(None);
+        }
+
+        let text = match self.auto_capture_mode {
+            AutoCaptureMode::Safe => extract_safe_tool_capture_text(tool_name, arguments)?,
+            AutoCaptureMode::Full => extract_full_tool_capture_text(tool_name, arguments)?,
+            AutoCaptureMode::Off => None,
+        };
+        match text {
+            Some(v) => self.persist_auto_capture(EventType::Inference, &v, 0.82),
+            None => Ok(None),
+        }
+    }
+
     /// Add a cognitive event to the graph.
     pub fn add_event(
         &mut self,
@@ -679,6 +762,12 @@ impl SessionManager {
                 "projected_size_bytes": projected_size_bytes,
                 "over_budget": over_budget,
                 "rollup_count": self.storage_budget_rollup_count,
+            },
+            "auto_capture": {
+                "mode": self.auto_capture_mode.as_str(),
+                "redact": self.auto_capture_redact,
+                "max_chars": self.auto_capture_max_chars,
+                "captured_count": self.auto_capture_count
             },
             "graph": {
                 "nodes": self.graph.node_count(),
@@ -864,6 +953,31 @@ impl SessionManager {
             .unwrap_or(0)
     }
 
+    fn persist_auto_capture(
+        &mut self,
+        event_type: EventType,
+        raw_text: &str,
+        confidence: f32,
+    ) -> McpResult<Option<u64>> {
+        let mut text = raw_text.trim().to_string();
+        if text.is_empty() {
+            return Ok(None);
+        }
+
+        if self.auto_capture_redact {
+            text = redact_sensitive_tokens(&text);
+        }
+
+        if text.len() > self.auto_capture_max_chars {
+            text.truncate(self.auto_capture_max_chars);
+            text.push_str(" …[truncated]");
+        }
+
+        let (node_id, _) = self.add_event(event_type, &text, confidence, vec![])?;
+        self.auto_capture_count = self.auto_capture_count.saturating_add(1);
+        Ok(Some(node_id))
+    }
+
     fn projected_file_size_bytes(&self, current_size: u64) -> Option<u64> {
         if current_size == 0 || self.graph.node_count() < 2 {
             return None;
@@ -1026,6 +1140,18 @@ fn read_env_f32(name: &str, default_value: f32) -> f32 {
         .unwrap_or(default_value)
 }
 
+fn read_env_bool(name: &str, default_value: bool) -> bool {
+    std::env::var(name)
+        .ok()
+        .map(|v| {
+            matches!(
+                v.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
+        .unwrap_or(default_value)
+}
+
 fn read_env_string(name: &str) -> Option<String> {
     std::env::var(name).ok().map(|v| v.trim().to_string())
 }
@@ -1049,9 +1175,273 @@ fn resolve_health_ledger_dir() -> PathBuf {
     home.join(".agentra").join("health-ledger")
 }
 
+fn extract_prompt_capture_text(
+    prompt_name: &str,
+    arguments: Option<&Value>,
+) -> McpResult<Option<String>> {
+    let args = arguments.unwrap_or(&Value::Null);
+    let fields = collect_text_fields_by_keys(
+        args,
+        &[
+            "information",
+            "context",
+            "topic",
+            "old_belief",
+            "new_information",
+            "reason",
+            "summary",
+            "instruction",
+            "prompt",
+            "query",
+        ],
+        8,
+    );
+    if fields.is_empty() {
+        return Ok(None);
+    }
+    let joined = fields.join(" | ");
+    Ok(Some(format!(
+        "[auto-capture][prompt] template={prompt_name} input={joined}"
+    )))
+}
+
+fn extract_safe_tool_capture_text(
+    tool_name: &str,
+    arguments: Option<&Value>,
+) -> McpResult<Option<String>> {
+    let args = arguments.unwrap_or(&Value::Null);
+    let keys = ["feedback", "summary", "note"];
+    if tool_name != "session_end" {
+        // Keep safe mode low-noise and non-invasive: only capture explicit feedback fields.
+        let explicit_feedback = collect_text_fields_by_keys(args, &["feedback", "note"], 4);
+        if explicit_feedback.is_empty() {
+            return Ok(None);
+        }
+    }
+    let fields = collect_text_fields_by_keys(args, &keys, 6);
+    if fields.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(format!(
+        "[auto-capture][feedback] tool={tool_name} context={}",
+        fields.join(" | ")
+    )))
+}
+
+fn extract_full_tool_capture_text(
+    tool_name: &str,
+    arguments: Option<&Value>,
+) -> McpResult<Option<String>> {
+    if tool_name == "memory_add" {
+        return Ok(None);
+    }
+    let args = arguments.unwrap_or(&Value::Null);
+    let preferred = collect_text_fields_by_keys(
+        args,
+        &[
+            "query",
+            "content",
+            "prompt",
+            "new_content",
+            "reason",
+            "summary",
+            "topic",
+            "instruction",
+            "information",
+            "context",
+            "feedback",
+        ],
+        10,
+    );
+
+    let fields = if preferred.is_empty() {
+        collect_all_string_like_fields(args, 8)
+    } else {
+        preferred
+    };
+
+    if fields.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(format!(
+        "[auto-capture][tool] tool={tool_name} input={}",
+        fields.join(" | ")
+    )))
+}
+
+fn collect_text_fields_by_keys(value: &Value, keys: &[&str], limit: usize) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut seen = std::collections::BTreeSet::<String>::new();
+
+    fn walk(
+        value: &Value,
+        path: String,
+        keys: &[&str],
+        out: &mut Vec<String>,
+        seen: &mut std::collections::BTreeSet<String>,
+        limit: usize,
+    ) {
+        if out.len() >= limit {
+            return;
+        }
+        match value {
+            Value::Object(map) => {
+                for (k, v) in map {
+                    if out.len() >= limit {
+                        break;
+                    }
+                    let next = if path.is_empty() {
+                        k.to_string()
+                    } else {
+                        format!("{path}.{k}")
+                    };
+                    let key_match = keys
+                        .iter()
+                        .any(|needle| k.eq_ignore_ascii_case(needle) || next.ends_with(needle));
+                    if key_match {
+                        if let Some(s) = value_to_compact_string(v) {
+                            let entry = format!("{next}={s}");
+                            if seen.insert(entry.clone()) {
+                                out.push(entry);
+                            }
+                        }
+                    }
+                    walk(v, next, keys, out, seen, limit);
+                }
+            }
+            Value::Array(items) => {
+                for (idx, item) in items.iter().enumerate() {
+                    if out.len() >= limit {
+                        break;
+                    }
+                    let next = format!("{path}[{idx}]");
+                    walk(item, next, keys, out, seen, limit);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    walk(value, String::new(), keys, &mut out, &mut seen, limit);
+    out
+}
+
+fn collect_all_string_like_fields(value: &Value, limit: usize) -> Vec<String> {
+    let mut out = Vec::new();
+    fn walk(value: &Value, path: String, out: &mut Vec<String>, limit: usize) {
+        if out.len() >= limit {
+            return;
+        }
+        match value {
+            Value::Object(map) => {
+                for (k, v) in map {
+                    if out.len() >= limit {
+                        break;
+                    }
+                    let next = if path.is_empty() {
+                        k.to_string()
+                    } else {
+                        format!("{path}.{k}")
+                    };
+                    walk(v, next, out, limit);
+                }
+            }
+            Value::Array(items) => {
+                for (idx, item) in items.iter().enumerate() {
+                    if out.len() >= limit {
+                        break;
+                    }
+                    walk(item, format!("{path}[{idx}]"), out, limit);
+                }
+            }
+            _ => {
+                if let Some(s) = value_to_compact_string(value) {
+                    out.push(format!("{path}={s}"));
+                }
+            }
+        }
+    }
+    walk(value, String::new(), &mut out, limit);
+    out
+}
+
+fn value_to_compact_string(value: &Value) -> Option<String> {
+    match value {
+        Value::String(s) => {
+            let trimmed = s.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        }
+        Value::Number(n) => Some(n.to_string()),
+        Value::Bool(b) => Some(b.to_string()),
+        Value::Null => None,
+        Value::Array(arr) => {
+            if arr.is_empty() {
+                None
+            } else {
+                Some(format!("<array:{}>", arr.len()))
+            }
+        }
+        Value::Object(map) => {
+            if map.is_empty() {
+                None
+            } else {
+                Some(format!("<object:{}>", map.len()))
+            }
+        }
+    }
+}
+
+fn redact_sensitive_tokens(text: &str) -> String {
+    text.split_whitespace()
+        .map(redact_token)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn redact_token(token: &str) -> String {
+    let trimmed = token.trim_matches(|c: char| c == '"' || c == '\'' || c == ',' || c == ';');
+    let lower = trimmed.to_ascii_lowercase();
+    if trimmed.starts_with("/Users/")
+        || trimmed.starts_with("C:\\Users\\")
+        || trimmed.contains("/Users/")
+        || trimmed.contains("C:\\Users\\")
+    {
+        return "[REDACTED_PATH]".to_string();
+    }
+    if trimmed.contains('@') && trimmed.contains('.') {
+        return "[REDACTED_EMAIL]".to_string();
+    }
+    if lower.starts_with("sk-")
+        || lower.contains("api_key")
+        || lower.contains("access_token")
+        || lower.contains("bearer")
+        || lower.contains("authorization")
+    {
+        return "[REDACTED_SECRET]".to_string();
+    }
+    if looks_like_long_secret(trimmed) {
+        return "[REDACTED_SECRET]".to_string();
+    }
+    token.to_string()
+}
+
+fn looks_like_long_secret(token: &str) -> bool {
+    if token.len() < 24 {
+        return false;
+    }
+    token
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == '.')
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn budget_projection_available_with_timeline() {
@@ -1111,5 +1501,54 @@ mod tests {
             .count();
         assert!(episode_count >= 1);
         assert!(manager.storage_budget_rollup_count >= 1);
+    }
+
+    #[test]
+    fn auto_capture_off_noop() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let brain = dir.path().join("capture-off.amem");
+        let mut manager = SessionManager::open(brain.to_str().expect("path")).expect("open");
+        manager.auto_capture_mode = AutoCaptureMode::Off;
+
+        let captured = manager
+            .capture_prompt_request(
+                "remember",
+                Some(&json!({"information":"hello world","context":"ctx"})),
+            )
+            .expect("capture");
+        assert!(captured.is_none());
+        assert_eq!(manager.graph().node_count(), 0);
+    }
+
+    #[test]
+    fn auto_capture_full_records_and_redacts() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let brain = dir.path().join("capture-full.amem");
+        let mut manager = SessionManager::open(brain.to_str().expect("path")).expect("open");
+        manager.auto_capture_mode = AutoCaptureMode::Full;
+        manager.auto_capture_redact = true;
+
+        manager
+            .capture_tool_call(
+                "memory_query",
+                Some(&json!({
+                    "query":"Find anything about token sk-THISISALONGSECRET123456",
+                    "context":"/Users/omoshola/Documents/private.txt",
+                    "reason":"email me at test@example.com"
+                })),
+            )
+            .expect("capture");
+
+        assert!(manager.graph().node_count() >= 1);
+        let latest = manager
+            .graph()
+            .nodes()
+            .iter()
+            .max_by_key(|n| n.id)
+            .expect("node");
+        assert!(latest.content.contains("[auto-capture][tool]"));
+        assert!(latest.content.contains("[REDACTED_SECRET]"));
+        assert!(latest.content.contains("[REDACTED_PATH]"));
+        assert!(latest.content.contains("[REDACTED_EMAIL]"));
     }
 }
