@@ -9,8 +9,9 @@ use crate::session::SessionManager;
 use crate::types::{McpError, McpResult, ToolCallResult, ToolDefinition};
 
 use super::{
-    memory_add, memory_causal, memory_context, memory_correct, memory_query, memory_resolve,
-    memory_similar, memory_stats, memory_temporal, memory_traverse, session_end, session_start,
+    memory_add, memory_causal, memory_context, memory_correct, memory_quality, memory_query,
+    memory_resolve, memory_similar, memory_stats, memory_temporal, memory_traverse, session_end,
+    session_start,
 };
 
 /// Registry of all available MCP tools.
@@ -22,6 +23,7 @@ impl ToolRegistry {
         vec![
             memory_add::definition(),
             memory_query::definition(),
+            memory_quality::definition(),
             memory_traverse::definition(),
             memory_correct::definition(),
             memory_resolve::definition(),
@@ -46,6 +48,7 @@ impl ToolRegistry {
         match name {
             "memory_add" => memory_add::execute(args, session).await,
             "memory_query" => memory_query::execute(args, session).await,
+            "memory_quality" => memory_quality::execute(args, session).await,
             "memory_traverse" => memory_traverse::execute(args, session).await,
             "memory_correct" => memory_correct::execute(args, session).await,
             "memory_resolve" => memory_resolve::execute(args, session).await,

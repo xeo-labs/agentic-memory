@@ -10,9 +10,9 @@ pub mod tokenizer;
 pub mod write;
 
 pub use query::{
-    CausalParams, CausalResult, PatternParams, PatternSort, QueryEngine, SimilarityMatchResult,
-    SimilarityParams, SubGraph, TemporalParams, TemporalResult, TimeRange, TraversalParams,
-    TraversalResult,
+    CausalParams, CausalResult, MemoryQualityParams, MemoryQualityReport, PatternParams,
+    PatternSort, QueryEngine, SimilarityMatchResult, SimilarityParams, SubGraph, TemporalParams,
+    TemporalResult, TimeRange, TraversalParams, TraversalResult,
 };
 pub use write::{DecayReport, IngestResult, WriteEngine};
 

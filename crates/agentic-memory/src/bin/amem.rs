@@ -194,6 +194,37 @@ enum Commands {
         /// Path to the .amem file
         file: PathBuf,
     },
+    /// Graph health and memory quality report
+    Quality {
+        /// Path to the .amem file
+        file: PathBuf,
+        /// Confidence threshold below which nodes are considered weak
+        #[arg(long, default_value = "0.45")]
+        low_confidence: f32,
+        /// Decay threshold below which nodes are considered stale
+        #[arg(long, default_value = "0.20")]
+        stale_decay: f32,
+        /// Max example IDs shown per category
+        #[arg(long, default_value = "20")]
+        limit: usize,
+    },
+    /// Scan workspace artifacts (.amem/.acb/.avis) and optionally write an episode snapshot
+    RuntimeSync {
+        /// Path to the .amem file
+        file: PathBuf,
+        /// Workspace root to scan
+        #[arg(long, default_value = ".")]
+        workspace: PathBuf,
+        /// Maximum directory depth for scan
+        #[arg(long, default_value = "4")]
+        max_depth: u32,
+        /// Session ID for episode write (0 = latest session)
+        #[arg(long, default_value = "0")]
+        session: u32,
+        /// Persist a sync snapshot as an Episode node
+        #[arg(long)]
+        write_episode: bool,
+    },
     /// BM25 text search over node contents
     TextSearch {
         /// Path to the .amem file
@@ -537,6 +568,21 @@ fn main() {
         Some(Commands::Import { file, json_file }) => commands::cmd_import(&file, &json_file),
         Some(Commands::Decay { file, threshold }) => commands::cmd_decay(&file, threshold, json),
         Some(Commands::Stats { file }) => commands::cmd_stats(&file, json),
+        Some(Commands::Quality {
+            file,
+            low_confidence,
+            stale_decay,
+            limit,
+        }) => commands::cmd_quality(&file, low_confidence, stale_decay, limit, json),
+        Some(Commands::RuntimeSync {
+            file,
+            workspace,
+            max_depth,
+            session,
+            write_episode,
+        }) => {
+            commands::cmd_runtime_sync(&file, &workspace, max_depth, session, write_episode, json)
+        }
         Some(Commands::TextSearch {
             file,
             query,

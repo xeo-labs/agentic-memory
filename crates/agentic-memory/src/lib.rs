@@ -13,9 +13,10 @@ pub mod types;
 
 // Re-export commonly used types at the crate root
 pub use engine::{
-    CausalParams, CausalResult, DecayReport, IngestResult, PatternParams, PatternSort, QueryEngine,
-    SimilarityMatchResult, SimilarityParams, SubGraph, TemporalParams, TemporalResult, TimeRange,
-    TraversalParams, TraversalResult, WriteEngine,
+    CausalParams, CausalResult, DecayReport, IngestResult, MemoryQualityParams,
+    MemoryQualityReport, PatternParams, PatternSort, QueryEngine, SimilarityMatchResult,
+    SimilarityParams, SubGraph, TemporalParams, TemporalResult, TimeRange, TraversalParams,
+    TraversalResult, WriteEngine,
 };
 pub use format::{AmemReader, AmemWriter, MmapReader, SimilarityMatch};
 pub use graph::{GraphBuilder, MemoryGraph, TraversalDirection};

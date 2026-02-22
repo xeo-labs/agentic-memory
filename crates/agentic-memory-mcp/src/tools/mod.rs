@@ -4,6 +4,7 @@ pub mod memory_add;
 pub mod memory_causal;
 pub mod memory_context;
 pub mod memory_correct;
+pub mod memory_quality;
 pub mod memory_query;
 pub mod memory_resolve;
 pub mod memory_similar;

@@ -44,6 +44,13 @@ gaps     = brain.gaps()                            # Where am I guessing?
 timeline = brain.drift("programming languages")    # How has this belief changed?
 ```
 
+Operational reliability commands (CLI):
+
+```bash
+amem quality my_agent.amem
+amem runtime-sync my_agent.amem --workspace . --write-episode
+```
+
 Six lines. Sixteen query types. One file holds everything. Works with Claude, GPT, Ollama, or any LLM you switch to next.
 
 <p align="center">

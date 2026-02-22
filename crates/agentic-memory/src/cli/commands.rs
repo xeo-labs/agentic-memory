@@ -5,8 +5,8 @@ use std::path::Path;
 use crate::engine::{
     AnalogicalAnchor, AnalogicalParams, BeliefRevisionParams, CausalParams, CentralityAlgorithm,
     CentralityParams, ConsolidationOp, ConsolidationParams, DriftParams, GapDetectionParams,
-    GapSeverity, HybridSearchParams, PatternParams, PatternSort, QueryEngine, ShortestPathParams,
-    TextSearchParams, TraversalParams, WriteEngine,
+    GapSeverity, HybridSearchParams, MemoryQualityParams, PatternParams, PatternSort, QueryEngine,
+    ShortestPathParams, TextSearchParams, TraversalParams, WriteEngine,
 };
 use crate::format::{AmemReader, AmemWriter};
 use crate::graph::traversal::TraversalDirection;
@@ -748,6 +748,230 @@ pub fn cmd_stats(path: &Path, json: bool) -> AmemResult<()> {
         }
     }
     Ok(())
+}
+
+/// Graph-wide quality report (confidence, staleness, structural health).
+pub fn cmd_quality(
+    path: &Path,
+    low_confidence: f32,
+    stale_decay: f32,
+    limit: usize,
+    json: bool,
+) -> AmemResult<()> {
+    let graph = AmemReader::read_from_file(path)?;
+    let query_engine = QueryEngine::new();
+    let report = query_engine.memory_quality(
+        &graph,
+        MemoryQualityParams {
+            low_confidence_threshold: low_confidence.clamp(0.0, 1.0),
+            stale_decay_threshold: stale_decay.clamp(0.0, 1.0),
+            max_examples: limit.max(1),
+        },
+    )?;
+
+    if json {
+        let out = serde_json::json!({
+            "status": report.status,
+            "summary": {
+                "nodes": report.node_count,
+                "edges": report.edge_count,
+                "low_confidence_count": report.low_confidence_count,
+                "stale_count": report.stale_count,
+                "orphan_count": report.orphan_count,
+                "decisions_without_support_count": report.decisions_without_support_count,
+                "contradiction_edges": report.contradiction_edges,
+                "supersedes_edges": report.supersedes_edges,
+            },
+            "examples": {
+                "low_confidence": report.low_confidence_examples,
+                "stale": report.stale_examples,
+                "orphan": report.orphan_examples,
+                "unsupported_decisions": report.unsupported_decision_examples,
+            }
+        });
+        println!("{}", serde_json::to_string_pretty(&out).unwrap_or_default());
+    } else {
+        println!("Memory quality report for {}", path.display());
+        println!("  Status: {}", report.status.to_uppercase());
+        println!("  Nodes: {}", report.node_count);
+        println!("  Edges: {}", report.edge_count);
+        println!(
+            "  Weak confidence (<{:.2}): {}",
+            low_confidence, report.low_confidence_count
+        );
+        println!("  Stale (<{:.2}): {}", stale_decay, report.stale_count);
+        println!("  Orphan nodes: {}", report.orphan_count);
+        println!(
+            "  Decisions without support edges: {}",
+            report.decisions_without_support_count
+        );
+        println!("  Contradiction edges: {}", report.contradiction_edges);
+        println!("  Supersedes edges: {}", report.supersedes_edges);
+        if !report.low_confidence_examples.is_empty() {
+            println!(
+                "  Low-confidence examples: {:?}",
+                report.low_confidence_examples
+            );
+        }
+        if !report.unsupported_decision_examples.is_empty() {
+            println!(
+                "  Unsupported decision examples: {:?}",
+                report.unsupported_decision_examples
+            );
+        }
+        println!(
+            "  Next: amem runtime-sync {} --workspace . --write-episode",
+            path.display()
+        );
+    }
+
+    Ok(())
+}
+
+#[derive(Default)]
+struct ArtifactScanReport {
+    amem_files: Vec<std::path::PathBuf>,
+    acb_files: Vec<std::path::PathBuf>,
+    avis_files: Vec<std::path::PathBuf>,
+    io_errors: usize,
+}
+
+/// Scan a workspace for sister artifacts and optionally write an episode memory.
+pub fn cmd_runtime_sync(
+    path: &Path,
+    workspace: &Path,
+    max_depth: u32,
+    session_id: u32,
+    write_episode: bool,
+    json: bool,
+) -> AmemResult<()> {
+    let mut graph = AmemReader::read_from_file(path)?;
+    let report = scan_workspace_artifacts(workspace, max_depth);
+
+    let mut episode_id = None;
+    if write_episode {
+        let sid = if session_id == 0 {
+            graph
+                .session_index()
+                .session_ids()
+                .iter()
+                .copied()
+                .max()
+                .unwrap_or(0)
+        } else {
+            session_id
+        };
+        let content = format!(
+            "Runtime sync snapshot for workspace {}: amem={} acb={} avis={} (depth={})",
+            workspace.display(),
+            report.amem_files.len(),
+            report.acb_files.len(),
+            report.avis_files.len(),
+            max_depth
+        );
+        let event = CognitiveEventBuilder::new(EventType::Episode, content)
+            .session_id(sid)
+            .confidence(0.95)
+            .build();
+        let id = graph.add_node(event)?;
+        episode_id = Some(id);
+        let writer = AmemWriter::new(graph.dimension());
+        writer.write_to_file(&graph, path)?;
+    }
+
+    if json {
+        let out = serde_json::json!({
+            "workspace": workspace.display().to_string(),
+            "max_depth": max_depth,
+            "amem_count": report.amem_files.len(),
+            "acb_count": report.acb_files.len(),
+            "avis_count": report.avis_files.len(),
+            "io_errors": report.io_errors,
+            "episode_written": episode_id.is_some(),
+            "episode_id": episode_id,
+            "sample": {
+                "amem": report.amem_files.iter().take(5).map(|p| p.display().to_string()).collect::<Vec<_>>(),
+                "acb": report.acb_files.iter().take(5).map(|p| p.display().to_string()).collect::<Vec<_>>(),
+                "avis": report.avis_files.iter().take(5).map(|p| p.display().to_string()).collect::<Vec<_>>(),
+            }
+        });
+        println!("{}", serde_json::to_string_pretty(&out).unwrap_or_default());
+    } else {
+        println!(
+            "Runtime sync scan in {} (depth {})",
+            workspace.display(),
+            max_depth
+        );
+        println!("  .amem files: {}", report.amem_files.len());
+        println!("  .acb files: {}", report.acb_files.len());
+        println!("  .avis files: {}", report.avis_files.len());
+        if report.io_errors > 0 {
+            println!("  Scan IO errors: {}", report.io_errors);
+        }
+        if let Some(id) = episode_id {
+            println!("  Wrote episode node: {}", id);
+        } else {
+            println!("  Episode write: skipped");
+        }
+    }
+
+    Ok(())
+}
+
+fn scan_workspace_artifacts(root: &Path, max_depth: u32) -> ArtifactScanReport {
+    let mut report = ArtifactScanReport::default();
+    scan_dir_recursive(root, 0, max_depth, &mut report);
+    report
+}
+
+fn scan_dir_recursive(path: &Path, depth: u32, max_depth: u32, report: &mut ArtifactScanReport) {
+    if depth > max_depth {
+        return;
+    }
+    let entries = match std::fs::read_dir(path) {
+        Ok(v) => v,
+        Err(_) => {
+            report.io_errors += 1;
+            return;
+        }
+    };
+
+    for entry in entries {
+        let entry = match entry {
+            Ok(v) => v,
+            Err(_) => {
+                report.io_errors += 1;
+                continue;
+            }
+        };
+        let p = entry.path();
+        if p.is_dir() {
+            if should_skip_dir(&p) {
+                continue;
+            }
+            scan_dir_recursive(&p, depth + 1, max_depth, report);
+            continue;
+        }
+        let Some(ext) = p.extension().and_then(|e| e.to_str()) else {
+            continue;
+        };
+        match ext.to_ascii_lowercase().as_str() {
+            "amem" => report.amem_files.push(p),
+            "acb" => report.acb_files.push(p),
+            "avis" => report.avis_files.push(p),
+            _ => {}
+        }
+    }
+}
+
+fn should_skip_dir(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+        return false;
+    };
+    matches!(
+        name,
+        ".git" | "target" | "node_modules" | ".venv" | ".idea" | ".vscode" | "__pycache__"
+    )
 }
 
 fn format_size(bytes: u64) -> String {

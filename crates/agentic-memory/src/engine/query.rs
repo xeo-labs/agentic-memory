@@ -144,6 +144,43 @@ pub struct SimilarityMatchResult {
     pub similarity: f32,
 }
 
+/// Parameters for memory quality analysis.
+pub struct MemoryQualityParams {
+    /// Nodes below this confidence are considered weak evidence.
+    pub low_confidence_threshold: f32,
+    /// Nodes below this decay score are considered stale.
+    pub stale_decay_threshold: f32,
+    /// Maximum number of example IDs returned in each bucket.
+    pub max_examples: usize,
+}
+
+impl Default for MemoryQualityParams {
+    fn default() -> Self {
+        Self {
+            low_confidence_threshold: 0.45,
+            stale_decay_threshold: 0.20,
+            max_examples: 20,
+        }
+    }
+}
+
+/// Graph-wide quality report for operational memory health.
+pub struct MemoryQualityReport {
+    pub status: String,
+    pub node_count: usize,
+    pub edge_count: usize,
+    pub contradiction_edges: usize,
+    pub supersedes_edges: usize,
+    pub low_confidence_count: usize,
+    pub stale_count: usize,
+    pub orphan_count: usize,
+    pub decisions_without_support_count: usize,
+    pub low_confidence_examples: Vec<u64>,
+    pub stale_examples: Vec<u64>,
+    pub orphan_examples: Vec<u64>,
+    pub unsupported_decision_examples: Vec<u64>,
+}
+
 /// A subgraph extracted around a center node.
 pub struct SubGraph {
     /// All nodes in the subgraph.
@@ -425,6 +462,104 @@ impl QueryEngine {
         matches.truncate(params.top_k);
 
         Ok(matches)
+    }
+
+    /// Evaluate memory quality across confidence, freshness, and graph structure.
+    pub fn memory_quality(
+        &self,
+        graph: &MemoryGraph,
+        params: MemoryQualityParams,
+    ) -> AmemResult<MemoryQualityReport> {
+        let mut low_confidence = Vec::new();
+        let mut stale = Vec::new();
+        let mut orphan = Vec::new();
+        let mut unsupported_decisions = Vec::new();
+
+        for node in graph.nodes() {
+            if node.confidence < params.low_confidence_threshold {
+                low_confidence.push(node.id);
+            }
+            if node.decay_score < params.stale_decay_threshold {
+                stale.push(node.id);
+            }
+
+            let has_out = !graph.edges_from(node.id).is_empty();
+            let has_in = !graph.edges_to(node.id).is_empty();
+            if !has_out && !has_in {
+                orphan.push(node.id);
+            }
+
+            if node.event_type == EventType::Decision {
+                let has_support = graph.edges_from(node.id).iter().any(|e| {
+                    e.edge_type == EdgeType::CausedBy || e.edge_type == EdgeType::Supports
+                });
+                if !has_support {
+                    unsupported_decisions.push(node.id);
+                }
+            }
+        }
+
+        let contradiction_edges = graph
+            .edges()
+            .iter()
+            .filter(|e| e.edge_type == EdgeType::Contradicts)
+            .count();
+        let supersedes_edges = graph
+            .edges()
+            .iter()
+            .filter(|e| e.edge_type == EdgeType::Supersedes)
+            .count();
+
+        let node_count = graph.node_count().max(1);
+        let weak_ratio = low_confidence.len() as f32 / node_count as f32;
+        let stale_ratio = stale.len() as f32 / node_count as f32;
+
+        let status = if weak_ratio > 0.35
+            || stale_ratio > 0.50
+            || !unsupported_decisions.is_empty()
+            || contradiction_edges > 25
+        {
+            "fail"
+        } else if weak_ratio > 0.15
+            || stale_ratio > 0.25
+            || !orphan.is_empty()
+            || contradiction_edges > 0
+        {
+            "warn"
+        } else {
+            "pass"
+        }
+        .to_string();
+
+        let low_confidence_count = low_confidence.len();
+        let stale_count = stale.len();
+        let orphan_count = orphan.len();
+        let decisions_without_support_count = unsupported_decisions.len();
+
+        let mut low_confidence_examples = low_confidence;
+        low_confidence_examples.truncate(params.max_examples);
+        let mut stale_examples = stale;
+        stale_examples.truncate(params.max_examples);
+        let mut orphan_examples = orphan;
+        orphan_examples.truncate(params.max_examples);
+        let mut unsupported_decision_examples = unsupported_decisions;
+        unsupported_decision_examples.truncate(params.max_examples);
+
+        Ok(MemoryQualityReport {
+            status,
+            node_count: graph.node_count(),
+            edge_count: graph.edge_count(),
+            contradiction_edges,
+            supersedes_edges,
+            low_confidence_count,
+            stale_count,
+            orphan_count,
+            decisions_without_support_count,
+            low_confidence_examples,
+            stale_examples,
+            orphan_examples,
+            unsupported_decision_examples,
+        })
     }
 
     /// Get the full context for a node: the node itself, all edges, and connected nodes.
