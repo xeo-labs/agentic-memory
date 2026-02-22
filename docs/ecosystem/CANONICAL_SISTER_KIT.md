@@ -96,14 +96,15 @@ This document is the single baseline contract for all current and future sisters
 
 ## 10. New-Sister Bootstrap
 
-- Every future sister starts from `templates/sister-bootstrap/README.template.md`.
+- Canonical bootstrap + README structure now lives in web docs:
+  - https://agentralabs.tech/docs/ecosystem-feature-reference
 - Minimum bootstrap deliverables before first release:
   - README scaffold with canonical layout
   - installer script
   - install guardrail script + workflow
   - canonical sister guardrail script + workflow
   - docs stubs for install/quickstart/integration
-- New sister README scaffolds must include:
+- New sister README docs must include:
   - standalone guarantee copy
   - all profile install commands (`default`, `desktop`, `terminal`, `server`)
   - optional workspace UX notes for `agentra` status/UI
@@ -111,13 +112,11 @@ This document is the single baseline contract for all current and future sisters
 
 ## 11. Workspace Orchestrator Contract
 
-- Sisters remain independently installable and operable.
-- `agentra` (or any future orchestrator) is optional UX only and must not become a hard runtime dependency.
-- Orchestrator UX must capability-detect sister tooling and report missing tools as actionable `MISSING` states.
-- Orchestrator UX may provide hints and status, but must not silently rewrite sister config or force bundled installs.
-- If a shared Rust workspace exists, root `Cargo.toml` must declare all sister members and keep workspace commands functional:
-  - `cargo run --bin agentra status`
-  - `cargo run --bin agentra ui`
+- Public orchestrator behavior contract is maintained in web docs:
+  - https://agentralabs.tech/docs/ecosystem-feature-reference
+- Local repo responsibility:
+  - preserve standalone installability for each sister
+  - keep orchestrator UX optional (never a hard runtime dependency)
 
 ## Change Control
 

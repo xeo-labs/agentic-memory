@@ -54,7 +54,6 @@ assert_image_spacing() {
 }
 
 assert_file "docs/ecosystem/CANONICAL_SISTER_KIT.md"
-assert_file "templates/sister-bootstrap/README.template.md"
 assert_file "scripts/install.sh"
 assert_file "scripts/check-install-commands.sh"
 assert_not_tracked "ECOSYSTEM-CONVENTIONS.md"
@@ -71,16 +70,7 @@ assert_contains '## 8. Design Asset Contract' docs/ecosystem/CANONICAL_SISTER_KI
 assert_contains '## 9. Env Var Namespace Contract' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains '## 10. New-Sister Bootstrap' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains '## 11. Workspace Orchestrator Contract' docs/ecosystem/CANONICAL_SISTER_KIT.md
-assert_contains 'Sisters remain independently installable and operable.' docs/ecosystem/CANONICAL_SISTER_KIT.md
-assert_contains 'cargo run --bin agentra status' docs/ecosystem/CANONICAL_SISTER_KIT.md
-
-assert_contains 'Standalone by default:' templates/sister-bootstrap/README.template.md
-assert_contains 'curl -fsSL https://agentralabs.tech/install/<target> | bash' templates/sister-bootstrap/README.template.md
-assert_contains 'curl -fsSL https://agentralabs.tech/install/<target>/desktop | bash' templates/sister-bootstrap/README.template.md
-assert_contains 'curl -fsSL https://agentralabs.tech/install/<target>/terminal | bash' templates/sister-bootstrap/README.template.md
-assert_contains 'curl -fsSL https://agentralabs.tech/install/<target>/server | bash' templates/sister-bootstrap/README.template.md
-assert_contains '## Workspace UX (Optional)' templates/sister-bootstrap/README.template.md
-assert_contains 'cargo run --bin agentra ui' templates/sister-bootstrap/README.template.md
+assert_contains 'https://agentralabs.tech/docs/ecosystem-feature-reference' docs/ecosystem/CANONICAL_SISTER_KIT.md
 
 assert_contains '<img src="assets/github-hero-pane.svg"' README.md
 assert_contains '<img src="assets/github-terminal-pane.svg"' README.md
