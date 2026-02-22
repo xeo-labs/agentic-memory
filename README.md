@@ -549,7 +549,7 @@ Configure Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_c
 
 ## Roadmap: v0.2.0 — Remote Server Support
 
-The next release adds HTTP/SSE transport for remote deployments. Track progress in [#1](https://github.com/agentralabs/agentic-memory/issues/1).
+The next release is planned to add HTTP/SSE transport for remote deployments. Track progress in [#1](https://github.com/agentralabs/agentic-memory/issues/1).
 
 | Feature | Status |
 |:---|:---|
@@ -561,19 +561,11 @@ The next release adds HTTP/SSE transport for remote deployments. Track progress 
 | Docker image + compose | Planned |
 | Remote deployment docs | Planned |
 
-```bash
-# Remote single-user
-agentic-memory-mcp serve-http \
-  --memory /data/brain.amem \
-  --port 8080 \
-  --token "secret123"
+Planned CLI shape (not available in current release):
 
-# Remote multi-tenant
-agentic-memory-mcp serve-http \
-  --multi-tenant \
-  --data-dir /data/users/ \
-  --port 8080 \
-  --token "secret123"
+```text
+agentic-memory-mcp serve-http --memory /data/brain.amem --port 8080 --token "<token>"
+agentic-memory-mcp serve-http --multi-tenant --data-dir /data/users --port 8080 --token "<token>"
 ```
 
 ---
