@@ -243,12 +243,6 @@ download_binary() {
 install_from_source() {
     echo "Installing from source (cargo fallback)..."
 
-    if ! command -v cargo &>/dev/null; then
-        echo "Error: release artifacts are unavailable and cargo is not installed." >&2
-        echo "Install Rust/Cargo first: https://rustup.rs" >&2
-        exit 1
-    fi
-
     local git_url="https://github.com/${REPO}.git"
     local cargo_bin="${CARGO_HOME:-$HOME/.cargo}/bin"
     local source_ref_text=""
@@ -261,6 +255,12 @@ install_from_source() {
         echo "  [dry-run] Would run: cargo install --git ${git_url} ${source_ref_text}--locked --force agentic-memory-mcp"
         echo "  [dry-run] Would copy from ${cargo_bin}/(amem,${BINARY_NAME}) to ${INSTALL_DIR}/"
         return
+    fi
+
+    if ! command -v cargo &>/dev/null; then
+        echo "Error: release artifacts are unavailable and cargo is not installed." >&2
+        echo "Install Rust/Cargo first: https://rustup.rs" >&2
+        exit 1
     fi
 
     if [ -n "${VERSION:-}" ] && [ "${VERSION}" != "latest" ]; then
@@ -709,6 +709,7 @@ main() {
     local platform
     set_progress 20 "Detecting platform"
     platform="$(detect_platform)"
+    HOST_OS="${platform%%-*}"
     echo "Platform: ${platform}"
     validate_profile
     echo "Profile: ${PROFILE}"
