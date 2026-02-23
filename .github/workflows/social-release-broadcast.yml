@@ -7,6 +7,11 @@ on:
 permissions:
   contents: read
 
+env:
+  DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+  SOCIAL_BROADCAST_WEBHOOK_URL: ${{ secrets.SOCIAL_BROADCAST_WEBHOOK_URL }}
+  X_BROADCAST_WEBHOOK_URL: ${{ secrets.X_BROADCAST_WEBHOOK_URL }}
+
 jobs:
   broadcast:
     runs-on: ubuntu-latest
@@ -46,9 +51,9 @@ jobs:
             core.setOutput('tag', tag)
 
       - name: Post to Discord
-        if: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
+        if: ${{ env.DISCORD_WEBHOOK_URL != '' }}
         env:
-          WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          WEBHOOK_URL: ${{ env.DISCORD_WEBHOOK_URL }}
           MESSAGE: ${{ steps.compose.outputs.message }}
         run: |
           jq -n --arg content "$MESSAGE" '{content: $content}' > payload.json
@@ -57,9 +62,9 @@ jobs:
             --data @payload.json
 
       - name: Post to Social Broadcast Webhook
-        if: ${{ secrets.SOCIAL_BROADCAST_WEBHOOK_URL != '' }}
+        if: ${{ env.SOCIAL_BROADCAST_WEBHOOK_URL != '' }}
         env:
-          WEBHOOK_URL: ${{ secrets.SOCIAL_BROADCAST_WEBHOOK_URL }}
+          WEBHOOK_URL: ${{ env.SOCIAL_BROADCAST_WEBHOOK_URL }}
           MESSAGE: ${{ steps.compose.outputs.message }}
           RELEASE_URL: ${{ steps.compose.outputs.release_url }}
           TAG: ${{ steps.compose.outputs.tag }}
@@ -76,9 +81,9 @@ jobs:
             --data @payload.json
 
       - name: Post to X Bridge Webhook
-        if: ${{ secrets.X_BROADCAST_WEBHOOK_URL != '' }}
+        if: ${{ env.X_BROADCAST_WEBHOOK_URL != '' }}
         env:
-          WEBHOOK_URL: ${{ secrets.X_BROADCAST_WEBHOOK_URL }}
+          WEBHOOK_URL: ${{ env.X_BROADCAST_WEBHOOK_URL }}
           MESSAGE: ${{ steps.compose.outputs.message }}
           RELEASE_URL: ${{ steps.compose.outputs.release_url }}
         run: |
@@ -95,9 +100,9 @@ jobs:
           {
             echo "## Social Release Broadcast"
             echo "- Release: ${{ github.event.release.tag_name }}"
-            echo "- Discord posted: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}"
-            echo "- Social webhook posted: ${{ secrets.SOCIAL_BROADCAST_WEBHOOK_URL != '' }}"
-            echo "- X bridge posted: ${{ secrets.X_BROADCAST_WEBHOOK_URL != '' }}"
+            echo "- Discord posted: ${{ env.DISCORD_WEBHOOK_URL != '' }}"
+            echo "- Social webhook posted: ${{ env.SOCIAL_BROADCAST_WEBHOOK_URL != '' }}"
+            echo "- X bridge posted: ${{ env.X_BROADCAST_WEBHOOK_URL != '' }}"
             echo ""
             echo "Required secrets for full broadcast:"
             echo "- DISCORD_WEBHOOK_URL"
