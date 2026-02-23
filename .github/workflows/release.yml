@@ -99,7 +99,7 @@ jobs:
           set -euo pipefail
           if ! output="$(cargo publish -p agentic-memory --token "${{ secrets.CARGO_REGISTRY_TOKEN }}" 2>&1)"; then
             echo "$output"
-            if echo "$output" | grep -qi "already uploaded"; then
+            if echo "$output" | grep -Eqi "already uploaded|already exists on crates\\.io index"; then
               echo "agentic-memory already published for this version; continuing."
             else
               exit 1
@@ -118,7 +118,7 @@ jobs:
               exit 0
             fi
             echo "$output"
-            if echo "$output" | grep -qi "already uploaded"; then
+            if echo "$output" | grep -Eqi "already uploaded|already exists on crates\\.io index"; then
               echo "agentic-memory-mcp already published for this version; continuing."
               exit 0
             fi
