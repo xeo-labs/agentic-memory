@@ -21,12 +21,9 @@ cd crates/agentic-memory
 cargo publish --dry-run
 cd ../..
 
-echo "Dry run: agentic-memory-mcp"
-cd crates/agentic-memory-mcp
-# Core crate may not be indexed yet for brand-new versions, so package MCP
-# locally instead of publish --dry-run for preflight validation.
-cargo package
-cd ../..
+echo "Preflight: agentic-memory-mcp (build + lint path)"
+cargo check -p agentic-memory-mcp
+echo "Note: skipping MCP crates.io dry-run until the new core crate version is published."
 
 echo ""
 echo "Dry run successful. To actually publish:"
