@@ -5,6 +5,11 @@ All notable changes to AgenticMemory will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-02-23
+
+### Fixed
+- Publish parity fix: aligned `agentic-memory` and `agentic-memory-mcp` crate versions so crates.io verification uses the matching core API surface.
+
 ## [0.2.2] - 2026-02-22
 
 ### Fixed
