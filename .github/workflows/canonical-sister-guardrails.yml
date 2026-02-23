@@ -7,8 +7,8 @@ on:
       - "scripts/install.sh"
       - "scripts/check-install-commands.sh"
       - "scripts/check-canonical-sister.sh"
+      - "scripts/check-runtime-hardening.sh"
       - "docs/**"
-      - "planning-docs/CANONICAL_SISTER_KIT.md"
       - ".github/workflows/canonical-sister-guardrails.yml"
   pull_request:
     paths:
@@ -16,8 +16,8 @@ on:
       - "scripts/install.sh"
       - "scripts/check-install-commands.sh"
       - "scripts/check-canonical-sister.sh"
+      - "scripts/check-runtime-hardening.sh"
       - "docs/**"
-      - "planning-docs/CANONICAL_SISTER_KIT.md"
       - ".github/workflows/canonical-sister-guardrails.yml"
 
 jobs:

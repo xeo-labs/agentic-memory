@@ -1,0 +1,25 @@
+name: Runtime Hardening Guardrails
+
+on:
+  push:
+    paths:
+      - "scripts/install.sh"
+      - "scripts/check-runtime-hardening.sh"
+      - "docs/ecosystem/CANONICAL_SISTER_KIT.md"
+      - "docs/public/ecosystem/CANONICAL_SISTER_KIT.md"
+      - ".github/workflows/runtime-hardening-guardrails.yml"
+  pull_request:
+    paths:
+      - "scripts/install.sh"
+      - "scripts/check-runtime-hardening.sh"
+      - "docs/ecosystem/CANONICAL_SISTER_KIT.md"
+      - "docs/public/ecosystem/CANONICAL_SISTER_KIT.md"
+      - ".github/workflows/runtime-hardening-guardrails.yml"
+
+jobs:
+  validate-runtime-hardening:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime hardening guardrails
+        run: ./scripts/check-runtime-hardening.sh

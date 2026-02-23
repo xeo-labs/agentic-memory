@@ -67,6 +67,7 @@ assert_image_spacing() {
 assert_file "docs/ecosystem/CANONICAL_SISTER_KIT.md"
 assert_file "scripts/install.sh"
 assert_file "scripts/check-install-commands.sh"
+assert_file "scripts/check-runtime-hardening.sh"
 assert_file "docs/quickstart.md"
 assert_file "docs/concepts.md"
 assert_file "docs/integration-guide.md"
@@ -91,7 +92,9 @@ assert_contains '## 11. Workspace Orchestrator Contract' docs/ecosystem/CANONICA
 assert_contains '## 12. Web Docs Grouping Contract' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains '## 13. Runtime Isolation and Universal MCP Hardening (Mandatory)' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains '## 13. Runtime Isolation and Universal MCP Hardening (Mandatory)' docs/public/ecosystem/CANONICAL_SISTER_KIT.md
-assert_contains '## 13. Runtime Isolation and Universal MCP Hardening (Mandatory)' planning-docs/CANONICAL_SISTER_KIT.md
+if [ -f planning-docs/CANONICAL_SISTER_KIT.md ]; then
+  assert_contains '## 13. Runtime Isolation and Universal MCP Hardening (Mandatory)' planning-docs/CANONICAL_SISTER_KIT.md
+fi
 assert_contains 'No silent fallback behavior for invalid enum/mode/depth/type parameters.' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'Deterministic per-project identity is required (canonical-path hashing or equivalent).' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'Do not bind to unrelated "latest cached" project state.' docs/ecosystem/CANONICAL_SISTER_KIT.md
@@ -99,6 +102,7 @@ assert_contains 'Stale/dead lock recovery is mandatory.' docs/ecosystem/CANONICA
 assert_contains 'Support `desktop`, `terminal`, and `server` profiles.' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'Post-install output must include restart guidance and optional feedback guidance.' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'Server profile/runtime must enforce token-based auth gate (`AGENTIC_TOKEN` or token file equivalent).' docs/ecosystem/CANONICAL_SISTER_KIT.md
+assert_contains 'Release gate requires automated stress/regression proof for:' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'https://agentralabs.tech/docs/ecosystem-feature-reference' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'https://agentralabs.tech/docs/sister-docs-catalog' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'docs folder required for every sister' docs/ecosystem/CANONICAL_SISTER_KIT.md
