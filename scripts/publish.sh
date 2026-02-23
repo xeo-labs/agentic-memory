@@ -23,7 +23,9 @@ cd ../..
 
 echo "Dry run: agentic-memory-mcp"
 cd crates/agentic-memory-mcp
-cargo publish --dry-run
+# Core crate may not be indexed yet for brand-new versions, so use --no-verify
+# for MCP dry-run packaging validation at this stage.
+cargo publish --dry-run --no-verify
 cd ../..
 
 echo ""
