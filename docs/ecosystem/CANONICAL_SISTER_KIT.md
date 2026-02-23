@@ -114,6 +114,12 @@ This document is the single baseline contract for all current and future sisters
   - installer script
   - install guardrail script + workflow
   - canonical sister guardrail script + workflow
+- Installer strength/completeness is mandatory for every new sister.
+  - Before implementing a new sister installer, review `agentic-memory/scripts/install.sh`, `agentic-vision/scripts/install.sh`, and `agentic-codebase/scripts/install.sh` as benchmark baselines.
+  - New installer capability must be at least parity with baseline behavior (release-first install, source fallback, profile parity, merge-only MCP config updates, deterministic completion output).
+- Live MCP sister support is mandatory during new-sister delivery.
+  - `agentic-memory-mcp`, `agentic-vision-mcp`, and `acb-mcp` are treated as live ecosystem infrastructure.
+  - New sister planning, implementation, and validation must explicitly use those MCP servers where applicable (design support, integration checks, stress/regression checks).
   - docs baseline listed above
 - New sister README docs must include:
   - standalone guarantee copy
@@ -145,6 +151,35 @@ This document is the single baseline contract for all current and future sisters
 - New sister docs must stay under the sister group and must not duplicate workspace-level operations content.
 - Troubleshooting content should live inside workspace operational docs (matrix section), not as a separate top-level page.
 - Command references should stay in command-surface pages; install commands should stay in installation pages.
+
+## 13. Runtime Isolation and Universal MCP Hardening (Mandatory)
+
+- All sisters must enforce strict MCP input validation.
+  - No silent fallback behavior for invalid enum/mode/depth/type parameters.
+  - Invalid params must return explicit protocol errors.
+- Project/runtime state must be isolated per workspace/project.
+  - Deterministic per-project identity is required (canonical-path hashing or equivalent).
+  - Same folder names in different locations must never share state.
+  - No cross-project contamination is permitted.
+- Unsafe cache selection is forbidden.
+  - Do not bind to unrelated "latest cached" project state.
+  - Resolve only explicit project state or project-derived deterministic state.
+- Concurrent startup hardening is required.
+  - Startup/index/compile lock must handle contention safely.
+  - Stale/dead lock recovery is mandatory.
+  - Lock acquisition must not deadlock when cache parent directories do not yet exist.
+- Installer behavior must remain universal and deterministic.
+  - Support `desktop`, `terminal`, and `server` profiles.
+  - MCP config updates are merge-only, never destructive overwrite.
+  - Post-install output must include restart guidance and optional feedback guidance.
+  - Server profile/runtime must enforce token-based auth gate (`AGENTIC_TOKEN` or token file equivalent).
+- Release gate requires automated stress/regression proof for:
+  - multi-project isolation
+  - same-name-folder isolation
+  - concurrent startup/lock behavior
+  - restart/session continuity
+  - local + desktop MCP + server runtime parity
+- New sisters are not release-ready unless all above checks pass in CI.
 
 ## Change Control
 
