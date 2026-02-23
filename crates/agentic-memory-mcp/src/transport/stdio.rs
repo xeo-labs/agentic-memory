@@ -76,8 +76,12 @@ impl StdioTransport {
                     reader.read_exact(&mut body).await.map_err(McpError::Io)?;
                     let payload = String::from_utf8_lossy(&body).to_string();
 
-                    self.process_message(&payload, framed_output, &mut stdout)
-                        .await?;
+                    if self
+                        .process_message(&payload, framed_output, &mut stdout)
+                        .await?
+                    {
+                        break;
+                    }
                     content_length = None;
                     continue;
                 }
@@ -90,8 +94,12 @@ impl StdioTransport {
                 continue;
             }
 
-            self.process_message(trimmed, framed_output, &mut stdout)
-                .await?;
+            if self
+                .process_message(trimmed, framed_output, &mut stdout)
+                .await?
+            {
+                break;
+            }
         }
 
         Ok(())
@@ -102,12 +110,16 @@ impl StdioTransport {
         input: &str,
         framed_output: bool,
         stdout: &mut tokio::io::Stdout,
-    ) -> McpResult<()> {
+    ) -> McpResult<bool> {
         match framing::parse_message(input.trim()) {
             Ok(msg) => {
                 if let Some(response) = self.handler.handle_message(msg).await {
                     self.write_response(stdout, &response, framed_output)
                         .await?;
+                }
+                if self.handler.shutdown_requested() {
+                    tracing::info!("Shutdown acknowledged, exiting stdio transport loop");
+                    return Ok(true);
                 }
             }
             Err(e) => {
@@ -126,7 +138,7 @@ impl StdioTransport {
                 self.write_response(stdout, &value, framed_output).await?;
             }
         }
-        Ok(())
+        Ok(false)
     }
 
     async fn write_response(

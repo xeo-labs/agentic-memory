@@ -159,4 +159,5 @@ async fn test_shutdown() {
     let msg = make_request(1, "shutdown", None);
     let response = handler.handle_message(msg).await.unwrap();
     assert!(response.get("result").is_some());
+    assert!(handler.shutdown_requested());
 }

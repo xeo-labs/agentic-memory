@@ -1,5 +1,6 @@
 //! Main request dispatcher — receives JSON-RPC messages, routes to handlers.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -18,6 +19,7 @@ use super::validator::validate_request;
 pub struct ProtocolHandler {
     session: Arc<Mutex<SessionManager>>,
     capabilities: Arc<Mutex<NegotiatedCapabilities>>,
+    shutdown_requested: Arc<AtomicBool>,
 }
 
 impl ProtocolHandler {
@@ -26,6 +28,7 @@ impl ProtocolHandler {
         Self {
             session,
             capabilities: Arc::new(Mutex::new(NegotiatedCapabilities::default())),
+            shutdown_requested: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -34,7 +37,13 @@ impl ProtocolHandler {
         Self {
             session,
             capabilities: Arc::new(Mutex::new(NegotiatedCapabilities::with_mode(mode))),
+            shutdown_requested: Arc::new(AtomicBool::new(false)),
         }
+    }
+
+    /// Returns true once a shutdown request has been handled.
+    pub fn shutdown_requested(&self) -> bool {
+        self.shutdown_requested.load(Ordering::Relaxed)
     }
 
     /// Handle an incoming JSON-RPC message and optionally return a response.
@@ -130,6 +139,7 @@ impl ProtocolHandler {
         tracing::info!("Shutdown requested");
         let mut session = self.session.lock().await;
         session.save()?;
+        self.shutdown_requested.store(true, Ordering::Relaxed);
         Ok(Value::Object(serde_json::Map::new()))
     }
 
