@@ -444,6 +444,35 @@ response = MemoryAgent(brain, OpenAIProvider()).chat(
 
 ---
 
+## Common Workflows
+
+1. **Debug a decision** -- When you need to understand why an agent made a choice:
+   ```python
+   brain.traverse(decision_id, edges=["caused_by"])   # Walk the reasoning chain
+   brain.impact(decision_id)                           # See downstream effects
+   ```
+
+2. **Verify belief currency** -- Before acting on stored knowledge:
+   ```python
+   current = brain.resolve(old_fact_id)   # Follow supersedes chains to the latest version
+   ```
+
+3. **Audit memory health** -- Periodic maintenance to keep your brain reliable:
+   ```python
+   report = brain.gaps()       # Find low-confidence nodes, stale evidence, unsupported decisions
+   # report.health_score -> 0.73
+   ```
+   ```bash
+   amem quality my_agent.amem   # CLI equivalent
+   ```
+
+4. **Cross-session continuity** -- Starting a new session with context from past work:
+   ```python
+   results = brain.search("current task description")   # Hybrid BM25 + vector retrieves relevant past experience
+   ```
+
+---
+
 ## How It Works
 
 AgenticMemory stores knowledge as a **typed cognitive event graph** in a custom binary format.
@@ -602,6 +631,16 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The fastest ways to help:
 2. **Add an LLM provider** -- write an integration for a new backend
 3. **Write an example** -- show a real use case
 4. **Improve docs** -- every clarification helps someone
+
+---
+
+## Privacy and Security
+
+- All data stays local in `.amem` files -- no telemetry, no cloud sync by default.
+- `AMEM_AUTO_CAPTURE_REDACT=true` strips PII from prompt and tool context before storage.
+- `AMEM_AUTO_CAPTURE_MODE` controls what gets captured: `safe` (default), `full`, or `off`.
+- Storage budget policy prevents unbounded growth with 20-year projection and auto-rollup.
+- Server mode requires an explicit `AGENTIC_TOKEN` environment variable for bearer auth.
 
 ---
 
