@@ -77,12 +77,56 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+      - name: Validate release note file
+        id: note
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTE_FILE="release-notes/v${VERSION}.md"
+          if [ ! -f "${NOTE_FILE}" ]; then
+            echo "Missing required release note: ${NOTE_FILE}"
+            exit 1
+          fi
+          python3 - <<'PY' "${NOTE_FILE}"
+          import re
+          import sys
+          from pathlib import Path
+          path = Path(sys.argv[1])
+          text = path.read_text(encoding="utf-8")
+          required = [
+              "## Executive Summary",
+              "## Business Impact",
+              "## Rollout Guidance",
+              "## Source Links",
+          ]
+          for heading in required:
+              if heading not in text:
+                  raise SystemExit(f"Missing required heading: {heading}")
+          if "template_draft" in text.lower():
+              raise SystemExit("Template marker still present in release notes.")
+          if "as an ai" in text.lower():
+              raise SystemExit("Release notes contain forbidden phrasing: as an ai")
+          paragraphs = []
+          for block in re.split(r"\n\s*\n", text):
+              b = block.strip()
+              if not b or b.startswith("##") or b.startswith("- "):
+                  continue
+              paragraphs.append(b)
+          if len(paragraphs) < 3:
+              raise SystemExit("Release note must contain at least 3 narrative paragraphs.")
+          for idx, p in enumerate(paragraphs[:3], start=1):
+              if len(p) < 120:
+                  raise SystemExit(f"Paragraph {idx} too short ({len(p)} chars).")
+          PY
+          echo "file=${NOTE_FILE}" >> "$GITHUB_OUTPUT"
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*.tar.gz
-          generate_release_notes: true
+          body_path: ${{ steps.note.outputs.file }}
+          generate_release_notes: false
           draft: false
           prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'beta') }}
 
