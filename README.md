@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="#quickstart">Quickstart</a> · <a href="#why-agentic-memory">Why</a> · <a href="#mcp-server">MCP Server</a> · <a href="#benchmarks">Benchmarks</a> · <a href="#the-query-engine">Query Engine</a> · <a href="#install">Install</a> · <a href="docs/api-reference.md">API</a> · <a href="paper/paper-i-format/agenticmemory-paper.pdf">Papers</a>
+  <a href="#quickstart">Quickstart</a> · <a href="#problems-solved">Problems Solved</a> · <a href="#why-agentic-memory">Why</a> · <a href="#mcp-server">MCP Server</a> · <a href="#benchmarks">Benchmarks</a> · <a href="#the-query-engine">Query Engine</a> · <a href="#install">Install</a> · <a href="docs/api-reference.md">API</a> · <a href="paper/paper-i-format/agenticmemory-paper.pdf">Papers</a>
 </p>
 
 ---
@@ -25,6 +25,21 @@ Claude forgets your last conversation. GPT doesn't know what you decided last we
 The current fixes don't work. Vector databases lose all structure -- you get "similar text," never *"why did I decide this?"*. Markdown files are slow and break at scale. Key-value stores are flat -- no relationships, no reasoning chains. Provider memory is locked to one vendor.
 
 **AgenticMemory** stores your agent's knowledge as a navigable graph in a single binary file. Not "search your old conversations." Your agent has a **brain** -- facts, decisions, reasoning chains, corrections, and skills -- all connected, all queryable in microseconds.
+
+<a name="problems-solved"></a>
+
+## Problems Solved (Read This First)
+
+- **Problem:** every chat starts over and previous decisions disappear.  
+  **Solved:** persistent `.amem` memory survives restarts, model switches, and long gaps between sessions.
+- **Problem:** vector search returns "similar text" but not true reasoning trails.  
+  **Solved:** graph traversal, causal paths, and decision lineage are first-class queries.
+- **Problem:** corrections overwrite truth and erase history.  
+  **Solved:** supersession chains preserve old and new beliefs with auditable change history.
+- **Problem:** memory quality degrades silently over time.  
+  **Solved:** quality, drift, gap, and revision tooling keep memory reliable at runtime.
+- **Problem:** long-term memory becomes too heavy to keep portable.  
+  **Solved:** compact single-file storage with practical multi-year lifespan and backup portability.
 
 ```python
 from agentic_memory import Brain
