@@ -1,0 +1,25 @@
+name: Primary Problem Regression
+
+on:
+  push:
+    paths:
+      - "scripts/test-primary-problems.sh"
+      - "docs/public/primary-problem-coverage.md"
+      - "docs/public/initial-problem-coverage.md"
+      - ".github/workflows/primary-problem-regression.yml"
+  pull_request:
+    paths:
+      - "scripts/test-primary-problems.sh"
+      - "docs/public/primary-problem-coverage.md"
+      - "docs/public/initial-problem-coverage.md"
+      - ".github/workflows/primary-problem-regression.yml"
+
+jobs:
+  validate-primary-problems:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run primary-problem regression
+        run: ./scripts/test-primary-problems.sh

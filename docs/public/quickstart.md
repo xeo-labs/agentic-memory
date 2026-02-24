@@ -72,3 +72,15 @@ Modes:
 - `safe`: capture prompt templates plus explicit feedback/session summary fields (`feedback`, `summary`, `note`).
 - `full`: capture broader tool input text (except direct `memory_add` payload duplication).
 - `off`: disable auto-capture.
+
+## Primary problem regression
+
+```bash
+./scripts/test-primary-problems.sh
+```
+
+See [Primary Problem Coverage](primary-problem-coverage.md) for the ID-to-capability map.
+
+## Initial problem coverage
+
+See [Initial Problem Coverage](initial-problem-coverage.md) for the foundational solved-problem references.
