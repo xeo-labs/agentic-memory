@@ -87,7 +87,11 @@ fn load_workspace_manager(
     Ok((manager, ws_id))
 }
 
-fn suggest_snippets(path: &Path, query: &str, limit: usize) -> agentic_memory::AmemResult<Vec<String>> {
+fn suggest_snippets(
+    path: &Path,
+    query: &str,
+    limit: usize,
+) -> agentic_memory::AmemResult<Vec<String>> {
     let graph = AmemReader::read_from_file(path)?;
     let query_lower = query.to_lowercase();
     let query_words: Vec<&str> = query_lower.split_whitespace().collect();
@@ -832,7 +836,10 @@ fn main() {
                             .get("node_id")
                             .and_then(|v| v.as_u64())
                             .unwrap_or_default();
-                        let score = row.get("score").and_then(|v| v.as_f64()).unwrap_or_default();
+                        let score = row
+                            .get("score")
+                            .and_then(|v| v.as_f64())
+                            .unwrap_or_default();
                         let content = row.get("content").and_then(|v| v.as_str()).unwrap_or("");
                         println!("  - [{}] score={:.3} {}", id, score, content);
                     }
@@ -840,61 +847,66 @@ fn main() {
             }
             Ok(())
         })(),
-        Some(Commands::Evidence { file, query, limit }) => (|| -> agentic_memory::AmemResult<()> {
-            let graph = AmemReader::read_from_file(&file)?;
-            let engine = QueryEngine::new();
-            let matches = engine.text_search(
-                &graph,
-                graph.term_index.as_ref(),
-                graph.doc_lengths.as_ref(),
-                TextSearchParams {
-                    query: query.clone(),
-                    max_results: limit,
-                    event_types: Vec::new(),
-                    session_ids: Vec::new(),
-                    min_score: 0.0,
-                },
-            )?;
-            let rows: Vec<_> = matches
-                .iter()
-                .filter_map(|m| {
-                    graph.get_node(m.node_id).map(|node| {
-                        serde_json::json!({
-                            "node_id": node.id,
-                            "event_type": node.event_type.name(),
-                            "content": node.content,
-                            "confidence": node.confidence,
-                            "score": m.score
+        Some(Commands::Evidence { file, query, limit }) => {
+            (|| -> agentic_memory::AmemResult<()> {
+                let graph = AmemReader::read_from_file(&file)?;
+                let engine = QueryEngine::new();
+                let matches = engine.text_search(
+                    &graph,
+                    graph.term_index.as_ref(),
+                    graph.doc_lengths.as_ref(),
+                    TextSearchParams {
+                        query: query.clone(),
+                        max_results: limit,
+                        event_types: Vec::new(),
+                        session_ids: Vec::new(),
+                        min_score: 0.0,
+                    },
+                )?;
+                let rows: Vec<_> = matches
+                    .iter()
+                    .filter_map(|m| {
+                        graph.get_node(m.node_id).map(|node| {
+                            serde_json::json!({
+                                "node_id": node.id,
+                                "event_type": node.event_type.name(),
+                                "content": node.content,
+                                "confidence": node.confidence,
+                                "score": m.score
+                            })
                         })
                     })
-                })
-                .collect();
-            if json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&serde_json::json!({
-                        "query": query,
-                        "count": rows.len(),
-                        "evidence": rows
-                    }))
-                    .unwrap_or_default()
-                );
-            } else if rows.is_empty() {
-                println!("No evidence found.");
-            } else {
-                println!("Evidence for {:?}:", query);
-                for row in rows {
-                    let id = row
-                        .get("node_id")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or_default();
-                    let score = row.get("score").and_then(|v| v.as_f64()).unwrap_or_default();
-                    let content = row.get("content").and_then(|v| v.as_str()).unwrap_or("");
-                    println!("  - [{}] score={:.3} {}", id, score, content);
+                    .collect();
+                if json {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&serde_json::json!({
+                            "query": query,
+                            "count": rows.len(),
+                            "evidence": rows
+                        }))
+                        .unwrap_or_default()
+                    );
+                } else if rows.is_empty() {
+                    println!("No evidence found.");
+                } else {
+                    println!("Evidence for {:?}:", query);
+                    for row in rows {
+                        let id = row
+                            .get("node_id")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or_default();
+                        let score = row
+                            .get("score")
+                            .and_then(|v| v.as_f64())
+                            .unwrap_or_default();
+                        let content = row.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                        println!("  - [{}] score={:.3} {}", id, score, content);
+                    }
                 }
-            }
-            Ok(())
-        })(),
+                Ok(())
+            })()
+        }
         Some(Commands::Suggest { file, query, limit }) => (|| -> agentic_memory::AmemResult<()> {
             let suggestions = suggest_snippets(&file, &query, limit)?;
             if json {
@@ -918,154 +930,154 @@ fn main() {
         })(),
         Some(Commands::Workspace { subcommand }) => (|| -> agentic_memory::AmemResult<()> {
             match subcommand {
-            WorkspaceCommands::Create { name } => {
-                let mut state = load_state()?;
-                state.workspaces.entry(name.clone()).or_default();
-                save_state(&state)?;
-                if json {
-                    println!(
-                        "{}",
-                        serde_json::to_string_pretty(&serde_json::json!({
-                            "workspace": name,
-                            "created": true
-                        }))
-                        .unwrap_or_default()
-                    );
-                } else {
-                    println!("Created workspace '{}'", name);
-                }
-                Ok(())
-            }
-            WorkspaceCommands::Add {
-                workspace,
-                file,
-                role,
-                label,
-            } => {
-                let mut state = load_state()?;
-                let contexts = state.workspaces.entry(workspace.clone()).or_default();
-                let file_path = file.to_string_lossy().to_string();
-                if !contexts.iter().any(|ctx| ctx.path == file_path) {
-                    contexts.push(WorkspaceContext {
-                        path: file_path.clone(),
-                        role: role.to_ascii_lowercase(),
-                        label,
-                    });
+                WorkspaceCommands::Create { name } => {
+                    let mut state = load_state()?;
+                    state.workspaces.entry(name.clone()).or_default();
                     save_state(&state)?;
-                }
-                if json {
-                    println!(
-                        "{}",
-                        serde_json::to_string_pretty(&serde_json::json!({
-                            "workspace": workspace,
-                            "path": file_path,
-                            "added": true
-                        }))
-                        .unwrap_or_default()
-                    );
-                } else {
-                    println!("Added {} to workspace '{}'", file.display(), workspace);
-                }
-                Ok(())
-            }
-            WorkspaceCommands::List { workspace } => {
-                let state = load_state()?;
-                let contexts = state.workspaces.get(&workspace).ok_or_else(|| {
-                    agentic_memory::AmemError::Io(std::io::Error::new(
-                        std::io::ErrorKind::NotFound,
-                        format!("workspace '{}' not found", workspace),
-                    ))
-                })?;
-                if json {
-                    println!(
-                        "{}",
-                        serde_json::to_string_pretty(&serde_json::json!({
-                            "workspace": workspace,
-                            "contexts": contexts
-                        }))
-                        .unwrap_or_default()
-                    );
-                } else {
-                    println!("Workspace '{}':", workspace);
-                    for ctx in contexts {
+                    if json {
                         println!(
-                            "  - {} (role={}, label={})",
-                            ctx.path,
-                            ctx.role,
-                            ctx.label.clone().unwrap_or_else(|| "-".to_string())
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::json!({
+                                "workspace": name,
+                                "created": true
+                            }))
+                            .unwrap_or_default()
                         );
+                    } else {
+                        println!("Created workspace '{}'", name);
                     }
+                    Ok(())
                 }
-                Ok(())
-            }
-            WorkspaceCommands::Query {
-                workspace,
-                query,
-                limit,
-            } => {
-                let state = load_state()?;
-                let (manager, ws_id) = load_workspace_manager(&state, &workspace)?;
-                let results = manager.query_all(&ws_id, &query, limit).map_err(|e| {
-                    agentic_memory::AmemError::Io(std::io::Error::new(
-                        std::io::ErrorKind::InvalidInput,
-                        e.to_string(),
-                    ))
-                })?;
-                if json {
-                    let rows: Vec<_> = results
-                        .iter()
-                        .map(|r| {
-                            serde_json::json!({
-                                "context_id": r.context_id,
-                                "role": r.context_role.label(),
-                                "matches": r.matches.iter().map(|m| serde_json::json!({
-                                    "node_id": m.node_id,
-                                    "event_type": m.event_type,
-                                    "score": m.score,
-                                    "confidence": m.confidence,
-                                    "content": m.content,
-                                })).collect::<Vec<_>>()
-                            })
-                        })
-                        .collect();
-                    println!(
-                        "{}",
-                        serde_json::to_string_pretty(&serde_json::json!({
-                            "workspace": workspace,
-                            "query": query,
-                            "results": rows
-                        }))
-                        .unwrap_or_default()
-                    );
-                } else {
-                    println!("Workspace query '{}':", query);
-                    for r in results {
-                        println!("  Context {} ({})", r.context_id, r.context_role.label());
-                        for m in r.matches {
+                WorkspaceCommands::Add {
+                    workspace,
+                    file,
+                    role,
+                    label,
+                } => {
+                    let mut state = load_state()?;
+                    let contexts = state.workspaces.entry(workspace.clone()).or_default();
+                    let file_path = file.to_string_lossy().to_string();
+                    if !contexts.iter().any(|ctx| ctx.path == file_path) {
+                        contexts.push(WorkspaceContext {
+                            path: file_path.clone(),
+                            role: role.to_ascii_lowercase(),
+                            label,
+                        });
+                        save_state(&state)?;
+                    }
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::json!({
+                                "workspace": workspace,
+                                "path": file_path,
+                                "added": true
+                            }))
+                            .unwrap_or_default()
+                        );
+                    } else {
+                        println!("Added {} to workspace '{}'", file.display(), workspace);
+                    }
+                    Ok(())
+                }
+                WorkspaceCommands::List { workspace } => {
+                    let state = load_state()?;
+                    let contexts = state.workspaces.get(&workspace).ok_or_else(|| {
+                        agentic_memory::AmemError::Io(std::io::Error::new(
+                            std::io::ErrorKind::NotFound,
+                            format!("workspace '{}' not found", workspace),
+                        ))
+                    })?;
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::json!({
+                                "workspace": workspace,
+                                "contexts": contexts
+                            }))
+                            .unwrap_or_default()
+                        );
+                    } else {
+                        println!("Workspace '{}':", workspace);
+                        for ctx in contexts {
                             println!(
-                                "    - [{}] score={:.3} {}",
-                                m.node_id, m.score, m.content
+                                "  - {} (role={}, label={})",
+                                ctx.path,
+                                ctx.role,
+                                ctx.label.clone().unwrap_or_else(|| "-".to_string())
                             );
                         }
                     }
+                    Ok(())
                 }
-                Ok(())
-            }
-            WorkspaceCommands::Compare {
-                workspace,
-                item,
-                limit,
-            } => {
-                let state = load_state()?;
-                let (manager, ws_id) = load_workspace_manager(&state, &workspace)?;
-                let comparison = manager.compare(&ws_id, &item, limit).map_err(|e| {
-                    agentic_memory::AmemError::Io(std::io::Error::new(
-                        std::io::ErrorKind::InvalidInput,
-                        e.to_string(),
-                    ))
-                })?;
-                if json {
-                    println!(
+                WorkspaceCommands::Query {
+                    workspace,
+                    query,
+                    limit,
+                } => {
+                    let state = load_state()?;
+                    let (manager, ws_id) = load_workspace_manager(&state, &workspace)?;
+                    let results = manager.query_all(&ws_id, &query, limit).map_err(|e| {
+                        agentic_memory::AmemError::Io(std::io::Error::new(
+                            std::io::ErrorKind::InvalidInput,
+                            e.to_string(),
+                        ))
+                    })?;
+                    if json {
+                        let rows: Vec<_> = results
+                            .iter()
+                            .map(|r| {
+                                serde_json::json!({
+                                    "context_id": r.context_id,
+                                    "role": r.context_role.label(),
+                                    "matches": r.matches.iter().map(|m| serde_json::json!({
+                                        "node_id": m.node_id,
+                                        "event_type": m.event_type,
+                                        "score": m.score,
+                                        "confidence": m.confidence,
+                                        "content": m.content,
+                                    })).collect::<Vec<_>>()
+                                })
+                            })
+                            .collect();
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::json!({
+                                "workspace": workspace,
+                                "query": query,
+                                "results": rows
+                            }))
+                            .unwrap_or_default()
+                        );
+                    } else {
+                        println!("Workspace query '{}':", query);
+                        for r in results {
+                            println!("  Context {} ({})", r.context_id, r.context_role.label());
+                            for m in r.matches {
+                                println!(
+                                    "    - [{}] score={:.3} {}",
+                                    m.node_id, m.score, m.content
+                                );
+                            }
+                        }
+                    }
+                    Ok(())
+                }
+                WorkspaceCommands::Compare {
+                    workspace,
+                    item,
+                    limit,
+                } => {
+                    let state = load_state()?;
+                    let (manager, ws_id) = load_workspace_manager(&state, &workspace)?;
+                    let comparison = manager.compare(&ws_id, &item, limit).map_err(|e| {
+                        agentic_memory::AmemError::Io(std::io::Error::new(
+                            std::io::ErrorKind::InvalidInput,
+                            e.to_string(),
+                        ))
+                    })?;
+                    if json {
+                        println!(
                         "{}",
                         serde_json::to_string_pretty(&serde_json::json!({
                             "workspace": workspace,
@@ -1083,38 +1095,38 @@ fn main() {
                         }))
                         .unwrap_or_default()
                     );
-                } else {
-                    println!("Found in: {:?}", comparison.found_in);
-                    println!("Missing from: {:?}", comparison.missing_from);
+                    } else {
+                        println!("Found in: {:?}", comparison.found_in);
+                        println!("Missing from: {:?}", comparison.missing_from);
+                    }
+                    Ok(())
                 }
-                Ok(())
-            }
-            WorkspaceCommands::Xref { workspace, item } => {
-                let state = load_state()?;
-                let (manager, ws_id) = load_workspace_manager(&state, &workspace)?;
-                let xref = manager.cross_reference(&ws_id, &item).map_err(|e| {
-                    agentic_memory::AmemError::Io(std::io::Error::new(
-                        std::io::ErrorKind::InvalidInput,
-                        e.to_string(),
-                    ))
-                })?;
-                if json {
-                    println!(
-                        "{}",
-                        serde_json::to_string_pretty(&serde_json::json!({
-                            "workspace": workspace,
-                            "item": xref.item,
-                            "present_in": xref.present_in,
-                            "absent_from": xref.absent_from
-                        }))
-                        .unwrap_or_default()
-                    );
-                } else {
-                    println!("Present in: {:?}", xref.present_in);
-                    println!("Absent from: {:?}", xref.absent_from);
+                WorkspaceCommands::Xref { workspace, item } => {
+                    let state = load_state()?;
+                    let (manager, ws_id) = load_workspace_manager(&state, &workspace)?;
+                    let xref = manager.cross_reference(&ws_id, &item).map_err(|e| {
+                        agentic_memory::AmemError::Io(std::io::Error::new(
+                            std::io::ErrorKind::InvalidInput,
+                            e.to_string(),
+                        ))
+                    })?;
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::json!({
+                                "workspace": workspace,
+                                "item": xref.item,
+                                "present_in": xref.present_in,
+                                "absent_from": xref.absent_from
+                            }))
+                            .unwrap_or_default()
+                        );
+                    } else {
+                        println!("Present in: {:?}", xref.present_in);
+                        println!("Absent from: {:?}", xref.absent_from);
+                    }
+                    Ok(())
                 }
-                Ok(())
-            }
             }
         })(),
         Some(Commands::Import { file, json_file }) => commands::cmd_import(&file, &json_file),

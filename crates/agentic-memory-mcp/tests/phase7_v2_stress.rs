@@ -4,9 +4,9 @@
 
 mod common;
 
+use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use serde_json::json;
 
 use agentic_memory_mcp::session::SessionManager;
 use agentic_memory_mcp::tools::ToolRegistry;
@@ -212,13 +212,9 @@ async fn test_grounding_partial_overlap() {
 async fn test_grounding_empty_claim() {
     let session = create_test_session();
 
-    let result = ToolRegistry::call(
-        "memory_ground",
-        Some(json!({"claim": ""})),
-        &session,
-    )
-    .await
-    .unwrap();
+    let result = ToolRegistry::call("memory_ground", Some(json!({"claim": ""})), &session)
+        .await
+        .unwrap();
 
     let parsed = result_json(&result);
     assert_eq!(parsed["status"], "ungrounded");
@@ -446,10 +442,13 @@ async fn test_workspace_add_context() {
     let session = create_test_session();
 
     // Create a seeded .amem file
-    let seeded = create_seeded_amem("ctx.amem", &[
-        ("fact", "OAuth requires client_id and client_secret"),
-        ("decision", "Use PKCE flow for public clients"),
-    ])
+    let seeded = create_seeded_amem(
+        "ctx.amem",
+        &[
+            ("fact", "OAuth requires client_id and client_secret"),
+            ("decision", "Use PKCE flow for public clients"),
+        ],
+    )
     .await;
 
     // Create workspace
@@ -460,7 +459,10 @@ async fn test_workspace_add_context() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // Add context
     let result = ToolRegistry::call(
@@ -486,17 +488,16 @@ async fn test_workspace_add_context() {
 async fn test_workspace_add_multiple_contexts() {
     let session = create_test_session();
 
-    let s1 = create_seeded_amem("primary.amem", &[
-        ("fact", "Frontend uses React with TypeScript"),
-    ])
+    let s1 = create_seeded_amem(
+        "primary.amem",
+        &[("fact", "Frontend uses React with TypeScript")],
+    )
     .await;
-    let s2 = create_seeded_amem("secondary.amem", &[
-        ("fact", "Backend uses Axum with Rust"),
-    ])
-    .await;
-    let s3 = create_seeded_amem("reference.amem", &[
-        ("fact", "API spec follows OpenAPI 3.1"),
-    ])
+    let s2 = create_seeded_amem("secondary.amem", &[("fact", "Backend uses Axum with Rust")]).await;
+    let s3 = create_seeded_amem(
+        "reference.amem",
+        &[("fact", "API spec follows OpenAPI 3.1")],
+    )
     .await;
 
     let ws = ToolRegistry::call(
@@ -506,7 +507,10 @@ async fn test_workspace_add_multiple_contexts() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let roles = ["primary", "secondary", "reference"];
     let paths = [&s1.path, &s2.path, &s3.path];
@@ -545,7 +549,10 @@ async fn test_workspace_list() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     ToolRegistry::call(
         "memory_workspace_add",
@@ -580,11 +587,14 @@ async fn test_workspace_list() {
 async fn test_workspace_query_single_context() {
     let session = create_test_session();
 
-    let seeded = create_seeded_amem("oauth.amem", &[
-        ("fact", "OAuth 2.0 requires client_id and redirect_uri"),
-        ("decision", "Use authorization code flow with PKCE"),
-        ("fact", "Access tokens expire after 3600 seconds"),
-    ])
+    let seeded = create_seeded_amem(
+        "oauth.amem",
+        &[
+            ("fact", "OAuth 2.0 requires client_id and redirect_uri"),
+            ("decision", "Use authorization code flow with PKCE"),
+            ("fact", "Access tokens expire after 3600 seconds"),
+        ],
+    )
     .await;
 
     let ws = ToolRegistry::call(
@@ -594,7 +604,10 @@ async fn test_workspace_query_single_context() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     ToolRegistry::call(
         "memory_workspace_add",
@@ -623,18 +636,26 @@ async fn test_workspace_query_single_context() {
 async fn test_workspace_query_across_contexts() {
     let session = create_test_session();
 
-    let s1 = create_seeded_amem("frontend.amem", &[
-        ("fact", "Frontend uses TypeScript with React"),
-        ("decision", "Chose TypeScript over plain JavaScript"),
-    ])
+    let s1 = create_seeded_amem(
+        "frontend.amem",
+        &[
+            ("fact", "Frontend uses TypeScript with React"),
+            ("decision", "Chose TypeScript over plain JavaScript"),
+        ],
+    )
     .await;
-    let s2 = create_seeded_amem("backend.amem", &[
-        ("fact", "Backend types generated from TypeScript interfaces"),
-    ])
+    let s2 = create_seeded_amem(
+        "backend.amem",
+        &[("fact", "Backend types generated from TypeScript interfaces")],
+    )
     .await;
-    let s3 = create_seeded_amem("tooling.amem", &[
-        ("fact", "Build pipeline uses esbuild for TypeScript compilation"),
-    ])
+    let s3 = create_seeded_amem(
+        "tooling.amem",
+        &[(
+            "fact",
+            "Build pipeline uses esbuild for TypeScript compilation",
+        )],
+    )
     .await;
 
     let ws = ToolRegistry::call(
@@ -644,7 +665,10 @@ async fn test_workspace_query_across_contexts() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     for path in [&s1.path, &s2.path, &s3.path] {
         ToolRegistry::call(
@@ -679,13 +703,15 @@ async fn test_workspace_query_across_contexts() {
 async fn test_workspace_compare_found_both() {
     let session = create_test_session();
 
-    let s1 = create_seeded_amem("dev.amem", &[
-        ("fact", "Development uses Docker Compose for local setup"),
-    ])
+    let s1 = create_seeded_amem(
+        "dev.amem",
+        &[("fact", "Development uses Docker Compose for local setup")],
+    )
     .await;
-    let s2 = create_seeded_amem("prod.amem", &[
-        ("fact", "Production uses Docker containers on ECS"),
-    ])
+    let s2 = create_seeded_amem(
+        "prod.amem",
+        &[("fact", "Production uses Docker containers on ECS")],
+    )
     .await;
 
     let ws = ToolRegistry::call(
@@ -695,7 +721,10 @@ async fn test_workspace_compare_found_both() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     for path in [&s1.path, &s2.path] {
         ToolRegistry::call(
@@ -727,14 +756,12 @@ async fn test_workspace_compare_found_both() {
 async fn test_workspace_compare_found_one() {
     let session = create_test_session();
 
-    let s1 = create_seeded_amem("api.amem", &[
-        ("fact", "API uses GraphQL with Apollo Server"),
-    ])
+    let s1 = create_seeded_amem(
+        "api.amem",
+        &[("fact", "API uses GraphQL with Apollo Server")],
+    )
     .await;
-    let s2 = create_seeded_amem("cli.amem", &[
-        ("fact", "CLI tool built with clap in Rust"),
-    ])
-    .await;
+    let s2 = create_seeded_amem("cli.amem", &[("fact", "CLI tool built with clap in Rust")]).await;
 
     let ws = ToolRegistry::call(
         "memory_workspace_create",
@@ -743,7 +770,10 @@ async fn test_workspace_compare_found_one() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     for path in [&s1.path, &s2.path] {
         ToolRegistry::call(
@@ -780,17 +810,23 @@ async fn test_workspace_compare_found_one() {
 async fn test_workspace_xref() {
     let session = create_test_session();
 
-    let s1 = create_seeded_amem("svc-a.amem", &[
-        ("fact", "Service A uses structured logging with tracing crate"),
-    ])
+    let s1 = create_seeded_amem(
+        "svc-a.amem",
+        &[(
+            "fact",
+            "Service A uses structured logging with tracing crate",
+        )],
+    )
     .await;
-    let s2 = create_seeded_amem("svc-b.amem", &[
-        ("fact", "Service B uses logging via log4j"),
-    ])
+    let s2 = create_seeded_amem(
+        "svc-b.amem",
+        &[("fact", "Service B uses logging via log4j")],
+    )
     .await;
-    let s3 = create_seeded_amem("svc-c.amem", &[
-        ("fact", "Service C has no logging configured yet"),
-    ])
+    let s3 = create_seeded_amem(
+        "svc-c.amem",
+        &[("fact", "Service C has no logging configured yet")],
+    )
     .await;
 
     let ws = ToolRegistry::call(
@@ -800,7 +836,10 @@ async fn test_workspace_xref() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     for path in [&s1.path, &s2.path, &s3.path] {
         ToolRegistry::call(
@@ -840,7 +879,10 @@ async fn test_workspace_empty() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // Query an empty workspace (no contexts added)
     let result = ToolRegistry::call(
@@ -866,7 +908,10 @@ async fn test_workspace_missing_id() {
     )
     .await;
 
-    assert!(result.is_err(), "Non-existent workspace ID should return error");
+    assert!(
+        result.is_err(),
+        "Non-existent workspace ID should return error"
+    );
 }
 
 #[tokio::test]
@@ -880,7 +925,10 @@ async fn test_workspace_add_invalid_path() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let result = ToolRegistry::call(
         "memory_workspace_add",
@@ -951,7 +999,10 @@ async fn test_ground_then_workspace() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     ToolRegistry::call(
         "memory_workspace_add",
@@ -981,18 +1032,33 @@ async fn test_ground_then_workspace() {
 async fn test_workspace_cross_project_query() {
     let session = create_test_session();
 
-    let frontend = create_seeded_amem("frontend-project.amem", &[
-        ("fact", "Frontend uses Jest for testing React components"),
-        ("fact", "Frontend uses Cypress for end-to-end testing"),
-        ("decision", "Chose Vitest over Jest for faster test execution"),
-    ])
+    let frontend = create_seeded_amem(
+        "frontend-project.amem",
+        &[
+            ("fact", "Frontend uses Jest for testing React components"),
+            ("fact", "Frontend uses Cypress for end-to-end testing"),
+            (
+                "decision",
+                "Chose Vitest over Jest for faster test execution",
+            ),
+        ],
+    )
     .await;
 
-    let backend = create_seeded_amem("backend-project.amem", &[
-        ("fact", "Backend uses cargo test for unit testing"),
-        ("fact", "Backend uses integration testing with testcontainers"),
-        ("decision", "Added property-based testing with proptest crate"),
-    ])
+    let backend = create_seeded_amem(
+        "backend-project.amem",
+        &[
+            ("fact", "Backend uses cargo test for unit testing"),
+            (
+                "fact",
+                "Backend uses integration testing with testcontainers",
+            ),
+            (
+                "decision",
+                "Added property-based testing with proptest crate",
+            ),
+        ],
+    )
     .await;
 
     let ws = ToolRegistry::call(
@@ -1002,7 +1068,10 @@ async fn test_workspace_cross_project_query() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     ToolRegistry::call(
         "memory_workspace_add",
@@ -1091,22 +1160,14 @@ async fn test_grounding_with_many_memories() {
 async fn test_workspace_role_filtering() {
     let session = create_test_session();
 
-    let s_primary = create_seeded_amem("primary-role.amem", &[
-        ("fact", "Primary context data"),
-    ])
-    .await;
-    let s_secondary = create_seeded_amem("secondary-role.amem", &[
-        ("fact", "Secondary context data"),
-    ])
-    .await;
-    let s_reference = create_seeded_amem("reference-role.amem", &[
-        ("fact", "Reference context data"),
-    ])
-    .await;
-    let s_archive = create_seeded_amem("archive-role.amem", &[
-        ("fact", "Archive context data"),
-    ])
-    .await;
+    let s_primary =
+        create_seeded_amem("primary-role.amem", &[("fact", "Primary context data")]).await;
+    let s_secondary =
+        create_seeded_amem("secondary-role.amem", &[("fact", "Secondary context data")]).await;
+    let s_reference =
+        create_seeded_amem("reference-role.amem", &[("fact", "Reference context data")]).await;
+    let s_archive =
+        create_seeded_amem("archive-role.amem", &[("fact", "Archive context data")]).await;
 
     let ws = ToolRegistry::call(
         "memory_workspace_create",
@@ -1115,7 +1176,10 @@ async fn test_workspace_role_filtering() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let pairs = [
         (&s_primary.path, "primary"),
@@ -1175,29 +1239,41 @@ async fn test_full_workflow() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     assert!(ws_id.starts_with("ws_"));
 
     // Step 2: Create and add 3 contexts
-    let ctx_auth = create_seeded_amem("auth.amem", &[
-        ("fact", "Authentication uses JWT tokens"),
-        ("decision", "Chose RS256 algorithm for JWT signing"),
-        ("fact", "Refresh tokens stored in HttpOnly cookies"),
-    ])
+    let ctx_auth = create_seeded_amem(
+        "auth.amem",
+        &[
+            ("fact", "Authentication uses JWT tokens"),
+            ("decision", "Chose RS256 algorithm for JWT signing"),
+            ("fact", "Refresh tokens stored in HttpOnly cookies"),
+        ],
+    )
     .await;
 
-    let ctx_db = create_seeded_amem("database.amem", &[
-        ("fact", "Database uses PostgreSQL 16"),
-        ("decision", "Chose sqlx over diesel for async support"),
-        ("fact", "Migrations managed with sqlx-cli"),
-    ])
+    let ctx_db = create_seeded_amem(
+        "database.amem",
+        &[
+            ("fact", "Database uses PostgreSQL 16"),
+            ("decision", "Chose sqlx over diesel for async support"),
+            ("fact", "Migrations managed with sqlx-cli"),
+        ],
+    )
     .await;
 
-    let ctx_deploy = create_seeded_amem("deploy.amem", &[
-        ("fact", "Deployment uses Docker with multi-stage builds"),
-        ("decision", "Chose Fly.io over AWS for simplicity"),
-        ("fact", "CI/CD pipeline runs on GitHub Actions"),
-    ])
+    let ctx_deploy = create_seeded_amem(
+        "deploy.amem",
+        &[
+            ("fact", "Deployment uses Docker with multi-stage builds"),
+            ("decision", "Chose Fly.io over AWS for simplicity"),
+            ("fact", "CI/CD pipeline runs on GitHub Actions"),
+        ],
+    )
     .await;
 
     for (path, role, label) in [

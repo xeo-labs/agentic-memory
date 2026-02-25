@@ -68,7 +68,10 @@ pub async fn execute(
         serde_json::from_value(args).map_err(|e| McpError::InvalidParams(e.to_string()))?;
 
     let role = ContextRole::from_str(&params.role).ok_or_else(|| {
-        McpError::InvalidParams(format!("Invalid role: {}. Use primary/secondary/reference/archive", params.role))
+        McpError::InvalidParams(format!(
+            "Invalid role: {}. Use primary/secondary/reference/archive",
+            params.role
+        ))
     })?;
 
     let mut session = session.lock().await;

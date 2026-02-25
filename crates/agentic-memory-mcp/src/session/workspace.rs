@@ -134,10 +134,9 @@ impl WorkspaceManager {
         role: ContextRole,
         label: Option<String>,
     ) -> McpResult<String> {
-        let workspace = self
-            .workspaces
-            .get_mut(workspace_id)
-            .ok_or_else(|| McpError::InvalidParams(format!("Workspace not found: {workspace_id}")))?;
+        let workspace = self.workspaces.get_mut(workspace_id).ok_or_else(|| {
+            McpError::InvalidParams(format!("Workspace not found: {workspace_id}"))
+        })?;
 
         // Load the .amem file
         let file_path = Path::new(path);
@@ -169,10 +168,9 @@ impl WorkspaceManager {
 
     /// List contexts in a workspace.
     pub fn list(&self, workspace_id: &str) -> McpResult<&[MemoryContext]> {
-        let workspace = self
-            .workspaces
-            .get(workspace_id)
-            .ok_or_else(|| McpError::InvalidParams(format!("Workspace not found: {workspace_id}")))?;
+        let workspace = self.workspaces.get(workspace_id).ok_or_else(|| {
+            McpError::InvalidParams(format!("Workspace not found: {workspace_id}"))
+        })?;
         Ok(&workspace.contexts)
     }
 
@@ -188,10 +186,9 @@ impl WorkspaceManager {
         query: &str,
         max_per_context: usize,
     ) -> McpResult<Vec<CrossContextResult>> {
-        let workspace = self
-            .workspaces
-            .get(workspace_id)
-            .ok_or_else(|| McpError::InvalidParams(format!("Workspace not found: {workspace_id}")))?;
+        let workspace = self.workspaces.get(workspace_id).ok_or_else(|| {
+            McpError::InvalidParams(format!("Workspace not found: {workspace_id}"))
+        })?;
 
         let engine = QueryEngine::new();
         let mut results = Vec::new();
@@ -272,11 +269,7 @@ impl WorkspaceManager {
     }
 
     /// Cross-reference: find which contexts have/lack a topic.
-    pub fn cross_reference(
-        &self,
-        workspace_id: &str,
-        item: &str,
-    ) -> McpResult<CrossReference> {
+    pub fn cross_reference(&self, workspace_id: &str, item: &str) -> McpResult<CrossReference> {
         let comparison = self.compare(workspace_id, item, 5)?;
         Ok(CrossReference {
             item: comparison.item,
@@ -293,8 +286,14 @@ mod tests {
     #[test]
     fn test_context_role_roundtrip() {
         assert_eq!(ContextRole::from_str("primary"), Some(ContextRole::Primary));
-        assert_eq!(ContextRole::from_str("SECONDARY"), Some(ContextRole::Secondary));
-        assert_eq!(ContextRole::from_str("reference"), Some(ContextRole::Reference));
+        assert_eq!(
+            ContextRole::from_str("SECONDARY"),
+            Some(ContextRole::Secondary)
+        );
+        assert_eq!(
+            ContextRole::from_str("reference"),
+            Some(ContextRole::Reference)
+        );
         assert_eq!(ContextRole::from_str("archive"), Some(ContextRole::Archive));
         assert_eq!(ContextRole::from_str("unknown"), None);
     }

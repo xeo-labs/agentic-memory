@@ -14,7 +14,7 @@ use serde_json::{json, Value};
 use agentic_memory::{EventType, PatternParams, PatternSort};
 
 use crate::session::SessionManager;
-use crate::types::{McpResult, McpError, ToolCallResult, ToolDefinition};
+use crate::types::{McpError, McpResult, ToolCallResult, ToolDefinition};
 
 #[derive(Debug, Deserialize)]
 struct ResumeParams {
@@ -146,7 +146,9 @@ pub async fn execute(
         .collect();
 
     // 4. Find recent skills / corrections (remaining limit).
-    let remaining = params.limit.saturating_sub(decision_nodes.len() + fact_nodes.len());
+    let remaining = params
+        .limit
+        .saturating_sub(decision_nodes.len() + fact_nodes.len());
     let recent_pattern = PatternParams {
         event_types: vec![EventType::Skill, EventType::Correction],
         min_confidence: None,
