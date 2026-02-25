@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="#quickstart">Quickstart</a> · <a href="#problems-solved">Problems Solved</a> · <a href="#why-agentic-memory">Why</a> · <a href="#mcp-server">MCP Server</a> · <a href="#benchmarks">Benchmarks</a> · <a href="#the-query-engine">Query Engine</a> · <a href="#install">Install</a> · <a href="docs/api-reference.md">API</a> · <a href="paper/paper-i-format/agenticmemory-paper.pdf">Papers</a>
+  <a href="#quickstart">Quickstart</a> · <a href="#problems-solved">Problems Solved</a> · <a href="#how-it-works">How It Works</a> · <a href="#why-agentic-memory">Why</a> · <a href="#mcp-server">MCP Server</a> · <a href="#benchmarks">Benchmarks</a> · <a href="#the-query-engine">Query Engine</a> · <a href="#install">Install</a> · <a href="docs/api-reference.md">API</a> · <a href="paper/paper-i-format/agenticmemory-paper.pdf">Papers</a>
 </p>
 
 ---
@@ -238,6 +238,7 @@ curl -fsSL https://agentralabs.tech/install/memory/server | bash
 | GitHub installer (server profile) | `curl -fsSL https://agentralabs.tech/install/memory/server \| bash` | Installs binaries only; server-safe behavior |
 | crates.io paired crates (official) | `cargo install agentic-memory agentic-memory-mcp` | Installs `amem` and `agentic-memory-mcp` |
 | PyPI (SDK + installer) | `pip install agentic-brain` / `pip install amem-installer` | Python SDK and auto-connector tools |
+| npm (wasm) | `npm install @agenticamem/memory` | WASM-based memory SDK for Node.js and browser |
 
 ### Server auth and artifact sync
 
@@ -472,6 +473,8 @@ response = MemoryAgent(brain, OpenAIProvider()).chat(
    ```
 
 ---
+
+<a name="how-it-works"></a>
 
 ## How It Works
 

@@ -334,6 +334,7 @@ cd ../installer && pytest tests/ -v
 | **agentic-memory-mcp** | [crates.io](https://crates.io/crates/agentic-memory-mcp) | `cargo install agentic-memory-mcp` |
 | **agentic-brain** | [PyPI](https://pypi.org/project/agentic-brain/) | `pip install agentic-brain` |
 | **amem-installer** | [PyPI](https://pypi.org/project/amem-installer/) | `pip install amem-installer` |
+| **@agenticamem/memory** | [npm](https://www.npmjs.com/package/@agenticamem/memory) | `npm install @agenticamem/memory` |
 
 ---
 

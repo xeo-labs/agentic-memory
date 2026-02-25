@@ -231,6 +231,43 @@ assert_file ".github/workflows/release.yml"
 assert_file ".github/workflows/canonical-sister-guardrails.yml"
 assert_file ".github/workflows/install-command-guardrails.yml"
 
+# ── 13. README nav bar links ────────────────────────────────────────────────
+
+assert_contains 'href="#quickstart"' README.md
+assert_contains 'href="#problems-solved"' README.md
+assert_contains 'href="#how-it-works"' README.md
+assert_contains 'href="#benchmarks"' README.md
+assert_contains 'href="#install"' README.md
+
+# ── 14. README architecture SVG width ───────────────────────────────────────
+
+if grep -qF 'architecture-agentra.svg' README.md; then
+  grep 'architecture-agentra.svg' README.md | grep -qF 'width="980"' \
+    || fail "README architecture SVG must use width=\"980\""
+fi
+
+# ── 15. Manifest page_ids baseline ──────────────────────────────────────────
+
+MANIFEST_BASELINE_PAGE_IDS=(
+  experience-with-vs-without
+  quickstart
+  installation
+  command-surface
+  runtime-install-sync
+)
+
+for pid in "${MANIFEST_BASELINE_PAGE_IDS[@]}"; do
+  assert_contains "\"${pid}\"" docs/public/sister.manifest.json
+done
+
+# ── 16. README npm install row ───────────────────────────────────────────────
+
+assert_contains 'npm install @agenticamem/' README.md
+
+# ── 17. Installation doc npm section ─────────────────────────────────────────
+
+assert_contains 'npm install @agenticamem/' docs/public/installation.md
+
 # ── Done ────────────────────────────────────────────────────────────────────
 
 echo "Canonical sister guardrails passed."
