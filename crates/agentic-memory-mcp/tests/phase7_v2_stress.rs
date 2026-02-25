@@ -80,7 +80,7 @@ async fn test_grounding_verified_fact() {
     let parsed = result_json(&result);
     assert_eq!(parsed["status"], "verified");
     assert!(
-        parsed["evidence"].as_array().unwrap().len() > 0,
+        !parsed["evidence"].as_array().unwrap().is_empty(),
         "Evidence should be non-empty for a verified claim"
     );
     assert!(parsed["confidence"].as_f64().unwrap() > 0.0);
@@ -109,7 +109,7 @@ async fn test_grounding_verified_decision() {
 
     let parsed = result_json(&result);
     assert_eq!(parsed["status"], "verified");
-    assert!(parsed["evidence"].as_array().unwrap().len() > 0);
+    assert!(!parsed["evidence"].as_array().unwrap().is_empty());
 }
 
 #[tokio::test]
@@ -1333,7 +1333,7 @@ async fn test_full_workflow() {
 
     let compare_parsed = result_json(&compare_result);
     assert!(
-        compare_parsed["found_in"].as_array().unwrap().len() >= 1,
+        !compare_parsed["found_in"].as_array().unwrap().is_empty(),
         "Docker should be found in at least one context"
     );
 
