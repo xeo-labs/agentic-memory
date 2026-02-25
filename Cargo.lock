@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "agentic-memory"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "chrono",
  "clap",
@@ -35,7 +35,7 @@ dependencies = [
 
 [[package]]
 name = "agentic-memory-mcp"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "agentic-memory",
  "anyhow",

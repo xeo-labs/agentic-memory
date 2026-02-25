@@ -1,6 +1,6 @@
 [package]
 name = "agentic-memory"
-version = "0.2.6"
+version = "0.2.7"
 edition = "2021"
 description = "Binary graph-based memory system for AI agents"
 license = "MIT"
