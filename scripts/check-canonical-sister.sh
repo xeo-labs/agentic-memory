@@ -1,5 +1,22 @@
 #!/usr/bin/env bash
+# check-canonical-sister.sh — Universal canonical sister guardrail
+#
+# This script enforces structural parity across all Agentra sister repos.
+# The assertion body is IDENTICAL across all sisters. Only the header
+# variables differ. If any check fails, the sister is NOT release-ready.
+#
 set -euo pipefail
+
+# ── Sister-specific configuration (ONLY section that differs per sister) ─────
+SISTER_KEY="memory"
+SISTER_NAME="AgenticMemory"
+FRONTMATTER_EXTRA=(
+  "docs/public/file-format.md"
+  "docs/public/rust-api.md"
+)
+# ── End sister-specific configuration ────────────────────────────────────────
+
+# ── Shared helpers ───────────────────────────────────────────────────────────
 
 fail() {
   echo "ERROR: $*" >&2
@@ -18,6 +35,10 @@ find_fixed() {
 
 assert_file() {
   [ -f "$1" ] || fail "Missing required file: $1"
+}
+
+assert_dir() {
+  [ -d "$1" ] || fail "Missing required directory: $1"
 }
 
 assert_contains() {
@@ -81,6 +102,8 @@ assert_image_spacing() {
   done < <(grep -n '<img src="assets/' README.md || true)
 }
 
+# ── 1. Core file existence ──────────────────────────────────────────────────
+
 assert_file "docs/ecosystem/CANONICAL_SISTER_KIT.md"
 assert_file "scripts/install.sh"
 assert_file "scripts/check-install-commands.sh"
@@ -96,8 +119,19 @@ assert_one_of "docs/file-format.md" "docs/LIMITATIONS.md"
 assert_file "docs/public/primary-problem-coverage.md"
 assert_file "docs/public/initial-problem-coverage.md"
 assert_file "docs/public/sister.manifest.json"
+
+# ── 2. Asset existence ──────────────────────────────────────────────────────
+
+assert_dir "assets"
+assert_file "assets/github-hero-pane.svg"
+assert_file "assets/github-terminal-pane.svg"
+
+# ── 3. Git tracking validation ──────────────────────────────────────────────
+
 assert_not_tracked "ECOSYSTEM-CONVENTIONS.md"
 assert_no_tracked_prefix "docs/internal/*"
+
+# ── 4. CANONICAL_SISTER_KIT.md section headers ──────────────────────────────
 
 assert_contains '## 1. Release Artifact Contract' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains '## 2. Install Contract Spec' docs/ecosystem/CANONICAL_SISTER_KIT.md
@@ -112,10 +146,16 @@ assert_contains '## 10. New-Sister Bootstrap' docs/ecosystem/CANONICAL_SISTER_KI
 assert_contains '## 11. Workspace Orchestrator Contract' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains '## 12. Web Docs Grouping Contract' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains '## 13. Runtime Isolation and Universal MCP Hardening (Mandatory)' docs/ecosystem/CANONICAL_SISTER_KIT.md
+
+# ── 5. CANONICAL_SISTER_KIT.md in public docs mirror ────────────────────────
+
 assert_contains '## 13. Runtime Isolation and Universal MCP Hardening (Mandatory)' docs/public/ecosystem/CANONICAL_SISTER_KIT.md
 if [ -f planning-docs/CANONICAL_SISTER_KIT.md ]; then
   assert_contains '## 13. Runtime Isolation and Universal MCP Hardening (Mandatory)' planning-docs/CANONICAL_SISTER_KIT.md
 fi
+
+# ── 6. Section 13 runtime isolation key phrases ─────────────────────────────
+
 assert_contains 'No silent fallback behavior for invalid enum/mode/depth/type parameters.' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'Deterministic per-project identity is required (canonical-path hashing or equivalent).' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'Do not bind to unrelated "latest cached" project state.' docs/ecosystem/CANONICAL_SISTER_KIT.md
@@ -124,29 +164,48 @@ assert_contains 'Support `desktop`, `terminal`, and `server` profiles.' docs/eco
 assert_contains 'Post-install output must include restart guidance and optional feedback guidance.' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'Server profile/runtime must enforce token-based auth gate (`AGENTIC_TOKEN` or token file equivalent).' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'Release gate requires automated stress/regression proof for:' docs/ecosystem/CANONICAL_SISTER_KIT.md
+
+# ── 7. Ecosystem URLs and key requirement phrases ───────────────────────────
+
 assert_contains 'https://agentralabs.tech/docs/ecosystem-feature-reference' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'https://agentralabs.tech/docs/sister-docs-catalog' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'docs folder required for every sister' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'web docs wiring is mandatory before release' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'Installer strength/completeness is mandatory for every new sister.' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'Before implementing a new sister installer, review `agentic-memory/scripts/install.sh`, `agentic-vision/scripts/install.sh`, and `agentic-codebase/scripts/install.sh` as benchmark baselines.' docs/ecosystem/CANONICAL_SISTER_KIT.md
-assert_contains '`agentic-memory-mcp`, `agentic-vision-mcp`, and `acb-mcp` are treated as live ecosystem infrastructure.' docs/ecosystem/CANONICAL_SISTER_KIT.md
+assert_contains '`agentic-memory-mcp`, `agentic-vision-mcp`, `agentic-codebase-mcp`, and `agentic-identity-mcp` are treated as live ecosystem infrastructure.' docs/ecosystem/CANONICAL_SISTER_KIT.md
 assert_contains 'New sister planning, implementation, and validation must explicitly use those MCP servers where applicable (design support, integration checks, stress/regression checks).' docs/ecosystem/CANONICAL_SISTER_KIT.md
-assert_contains '"key": "memory"' docs/public/sister.manifest.json
-assert_contains '"name": "AgenticMemory"' docs/public/sister.manifest.json
+
+# ── 8. Sister manifest validation (parameterized) ───────────────────────────
+
+assert_contains "\"key\": \"${SISTER_KEY}\"" docs/public/sister.manifest.json
+assert_contains "\"name\": \"${SISTER_NAME}\"" docs/public/sister.manifest.json
 assert_contains '"page_ids": [' docs/public/sister.manifest.json
-assert_frontmatter_status_stable "docs/public/experience-with-vs-without.md"
-assert_frontmatter_status_stable "docs/public/quickstart.md"
-assert_frontmatter_status_stable "docs/public/installation.md"
-assert_frontmatter_status_stable "docs/public/command-surface.md"
-assert_frontmatter_status_stable "docs/public/runtime-install-sync.md"
-assert_frontmatter_status_stable "docs/public/integration-guide.md"
-assert_frontmatter_status_stable "docs/public/concepts.md"
-assert_frontmatter_status_stable "docs/public/api-reference.md"
-assert_frontmatter_status_stable "docs/public/file-format.md"
-assert_frontmatter_status_stable "docs/public/rust-api.md"
-assert_frontmatter_status_stable "docs/public/benchmarks.md"
-assert_frontmatter_status_stable "docs/public/faq.md"
+
+# ── 9. Public docs frontmatter (common baseline) ────────────────────────────
+
+FRONTMATTER_BASELINE=(
+  "docs/public/experience-with-vs-without.md"
+  "docs/public/quickstart.md"
+  "docs/public/installation.md"
+  "docs/public/command-surface.md"
+  "docs/public/runtime-install-sync.md"
+  "docs/public/integration-guide.md"
+  "docs/public/concepts.md"
+  "docs/public/api-reference.md"
+  "docs/public/benchmarks.md"
+  "docs/public/faq.md"
+)
+
+for doc in "${FRONTMATTER_BASELINE[@]}"; do
+  assert_frontmatter_status_stable "$doc"
+done
+
+for doc in "${FRONTMATTER_EXTRA[@]}"; do
+  assert_frontmatter_status_stable "$doc"
+done
+
+# ── 10. README canonical layout ─────────────────────────────────────────────
 
 assert_contains '<img src="assets/github-hero-pane.svg"' README.md
 assert_contains '<img src="assets/github-terminal-pane.svg"' README.md
@@ -155,6 +214,8 @@ assert_contains '## Quickstart' README.md
 assert_contains '## How It Works' README.md
 assert_image_spacing
 
+# ── 11. Install script canonical output ─────────────────────────────────────
+
 assert_contains 'MCP client summary:' scripts/install.sh
 assert_contains 'Universal MCP entry (works in any MCP client):' scripts/install.sh
 assert_contains 'Quick terminal check:' scripts/install.sh
@@ -162,5 +223,14 @@ assert_contains 'echo "  args: ${SERVER_ARGS_TEXT}"' scripts/install.sh
 assert_contains 'After restart, confirm' scripts/install.sh
 assert_contains 'Optional feedback:' scripts/install.sh
 assert_contains 'AGENTIC_TOKEN' scripts/install.sh
+
+# ── 12. CI workflow presence ────────────────────────────────────────────────
+
+assert_file ".github/workflows/ci.yml"
+assert_file ".github/workflows/release.yml"
+assert_file ".github/workflows/canonical-sister-guardrails.yml"
+assert_file ".github/workflows/install-command-guardrails.yml"
+
+# ── Done ────────────────────────────────────────────────────────────────────
 
 echo "Canonical sister guardrails passed."
