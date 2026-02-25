@@ -10,6 +10,7 @@
   <a href="paper/paper-i-format/agenticmemory-paper.pdf"><img src="https://img.shields.io/badge/Research-Paper_I-8B5CF6?style=for-the-badge" alt="Research Paper I"></a>
   <a href="paper/paper-ii-query-expansion/agenticmemory-query-expansion.pdf"><img src="https://img.shields.io/badge/Research-Paper_II-8B5CF6?style=for-the-badge" alt="Research Paper II"></a>
   <a href="paper/paper-iii-mcp-server/agentic-memory-mcp-paper.pdf"><img src="https://img.shields.io/badge/Research-Paper_III-8B5CF6?style=for-the-badge" alt="Research Paper III"></a>
+  <a href="docs/api-reference.md"><img src="https://img.shields.io/badge/format-.amem-3B82F6?style=for-the-badge" alt=".amem format"></a>
 </p>
 
 <p align="center">
@@ -633,6 +634,30 @@ Planned CLI shape (not available in current release):
 agentic-memory-mcp serve-http --memory /data/brain.amem --port 8080 --token "<token>"
 agentic-memory-mcp serve-http --multi-tenant --data-dir /data/users --port 8080 --token "<token>"
 ```
+
+---
+
+## The .amem File
+
+Your agent's memory. One file. Forever yours.
+
+| | |
+|-|-|
+| Size | ~1-2 GB over 20 years |
+| Format | Binary graph, portable |
+| Works with | Claude, GPT, Llama, any model |
+
+**Two purposes:**
+1. **Retention**: 20 years of conversations, decisions, preferences
+2. **Enrichment**: Load into ANY model — suddenly it knows you
+
+The model is commodity. Your .amem is value.
+
+## v0.3: Grounding & Workspaces
+
+**Grounding**: Agent cannot claim "you said X" without memory evidence.
+
+**Workspaces**: Query across multiple .amem files simultaneously.
 
 ---
 

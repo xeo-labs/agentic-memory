@@ -1,0 +1,24 @@
+[package]
+name = "agentic-memory-ffi"
+version = "0.3.1"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/agentralabs/agentic-memory"
+homepage = "https://agentralabs.tech"
+authors = ["Agentra Labs <contact@agentralabs.tech>"]
+description = "FFI bindings for AgenticMemory"
+keywords = ["ffi", "memory", "ai", "agent", "bindings"]
+categories = ["api-bindings"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+agentic-memory = { path = "../agentic-memory", version = "0.3.0", default-features = false, features = ["format"] }
+pyo3 = { version = "0.20", features = ["extension-module"], optional = true }
+wasm-bindgen = { version = "0.2", optional = true }
+serde-wasm-bindgen = { version = "0.6", optional = true }
+
+[features]
+python = ["pyo3"]
+wasm = ["wasm-bindgen", "serde-wasm-bindgen"]

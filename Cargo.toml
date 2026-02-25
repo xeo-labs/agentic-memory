@@ -3,6 +3,8 @@ resolver = "2"
 members = [
     "crates/agentic-memory",
     "crates/agentic-memory-mcp",
+    "crates/agentic-memory-cli",
+    "crates/agentic-memory-ffi",
     "tests/bridge",
 ]
 exclude = [
@@ -10,6 +12,7 @@ exclude = [
 ]
 
 [workspace.package]
+version = "0.3.1"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/agentralabs/agentic-memory"
@@ -27,3 +30,5 @@ tempfile = "3"
 # Internal crates
 agentic-memory = { path = "crates/agentic-memory" }
 agentic-memory-mcp = { path = "crates/agentic-memory-mcp" }
+agentic-memory-cli = { path = "crates/agentic-memory-cli" }
+agentic-memory-ffi = { path = "crates/agentic-memory-ffi" }
