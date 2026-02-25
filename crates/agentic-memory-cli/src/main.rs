@@ -73,7 +73,7 @@ fn load_workspace_manager(
     let ws_id = manager.create(workspace);
 
     for ctx in contexts {
-        let role = ContextRole::from_str(&ctx.role).unwrap_or(ContextRole::Primary);
+        let role = ContextRole::parse_str(&ctx.role).unwrap_or(ContextRole::Primary);
         manager
             .add_context(&ws_id, &ctx.path, role, ctx.label.clone())
             .map_err(|e| {

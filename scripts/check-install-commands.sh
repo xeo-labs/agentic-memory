@@ -46,7 +46,8 @@ assert_contains "curl -fsSL https://agentralabs.tech/install/memory | bash" READ
 assert_contains "curl -fsSL https://agentralabs.tech/install/memory/desktop | bash" README.md docs/quickstart.md INSTALL.md
 assert_contains "curl -fsSL https://agentralabs.tech/install/memory/terminal | bash" README.md docs/quickstart.md INSTALL.md
 assert_contains "curl -fsSL https://agentralabs.tech/install/memory/server | bash" README.md docs/quickstart.md INSTALL.md
-assert_contains "cargo install agentic-memory agentic-memory-mcp" README.md
+assert_contains "cargo install agentic-memory-cli" README.md
+assert_contains "cargo install agentic-memory-mcp" README.md
 assert_contains "pip install amem-installer && amem-install install --auto" README.md
 
 # Invalid patterns

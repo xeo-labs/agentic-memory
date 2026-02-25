@@ -67,7 +67,7 @@ pub async fn execute(
     let params: AddParams =
         serde_json::from_value(args).map_err(|e| McpError::InvalidParams(e.to_string()))?;
 
-    let role = ContextRole::from_str(&params.role).ok_or_else(|| {
+    let role = ContextRole::parse_str(&params.role).ok_or_else(|| {
         McpError::InvalidParams(format!(
             "Invalid role: {}. Use primary/secondary/reference/archive",
             params.role
