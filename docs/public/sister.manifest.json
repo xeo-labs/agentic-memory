@@ -14,7 +14,8 @@
     "file-format",
     "rust-api",
     "benchmarks",
-    "faq"
+    "faq",
+    "playbooks-agent-integration"
   ],
   "slug_by_id": {}
 }

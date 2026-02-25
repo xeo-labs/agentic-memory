@@ -280,9 +280,10 @@ assert_contains 'architecture-agentra.svg' README.md
 
 # ── 20. No root-level doc duplication ────────────────────────────────────────
 # Canonical docs live in docs/public/. Root-level duplicates cause confusion.
+# NOTE: docs/quickstart.md is intentionally kept as a lightweight install-route
+# pointer (different content from docs/public/quickstart.md).
 
 ANTI_DUPE_FILES=(
-  "docs/quickstart.md"
   "docs/concepts.md"
   "docs/integration-guide.md"
   "docs/faq.md"
@@ -298,6 +299,11 @@ for dupe in "${ANTI_DUPE_FILES[@]}"; do
     fail "Root-level duplicate doc must not be tracked: $dupe (canonical location: docs/public/)"
   fi
 done
+
+# ── 21. Use-case playbook presence ──────────────────────────────────────────
+
+assert_file "docs/public/playbooks-agent-integration.md"
+assert_frontmatter_status_stable "docs/public/playbooks-agent-integration.md"
 
 # ── Done ────────────────────────────────────────────────────────────────────
 
