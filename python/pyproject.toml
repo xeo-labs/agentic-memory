@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentic-brain"
-version = "0.2.0"
+version = "0.2.1"
 description = "Portable binary graph memory for AI agents"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "Omoshola Owolabi" },
+    { name = "Agentra Labs" },
 ]
 keywords = ["ai", "agent", "memory", "llm", "graph"]
 classifiers = [

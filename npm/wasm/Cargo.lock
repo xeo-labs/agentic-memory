@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "agentic-memory"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "chrono",
  "log",
@@ -15,7 +15,7 @@ dependencies = [
 
 [[package]]
 name = "agentic-memory-wasm"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "agentic-memory",
  "getrandom",
