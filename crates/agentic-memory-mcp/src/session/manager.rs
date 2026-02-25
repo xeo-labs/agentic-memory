@@ -245,6 +245,8 @@ pub struct SessionManager {
     last_temporal_node_id: Option<u64>,
     /// Last known file modification time (for detecting external writes).
     last_file_mtime: Option<SystemTime>,
+    /// Multi-context workspace manager for cross-memory queries.
+    workspace_manager: super::workspace::WorkspaceManager,
 }
 
 impl SessionManager {
@@ -397,6 +399,7 @@ impl SessionManager {
             } else {
                 None
             },
+            workspace_manager: super::workspace::WorkspaceManager::new(),
         };
 
         if let Some(version) = legacy_version {
@@ -457,6 +460,16 @@ impl SessionManager {
     /// Get the write engine.
     pub fn write_engine(&self) -> &WriteEngine {
         &self.write_engine
+    }
+
+    /// Get the workspace manager (immutable).
+    pub fn workspace_manager(&self) -> &super::workspace::WorkspaceManager {
+        &self.workspace_manager
+    }
+
+    /// Get the workspace manager (mutable).
+    pub fn workspace_manager_mut(&mut self) -> &mut super::workspace::WorkspaceManager {
+        &mut self.workspace_manager
     }
 
     /// Current session ID.

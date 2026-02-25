@@ -9,9 +9,11 @@ use crate::session::SessionManager;
 use crate::types::{McpError, McpResult, ToolCallResult, ToolDefinition};
 
 use super::{
-    conversation_log, memory_add, memory_causal, memory_context, memory_correct, memory_quality,
-    memory_query, memory_resolve, memory_similar, memory_stats, memory_temporal, memory_traverse,
-    session_end, session_start,
+    conversation_log, memory_add, memory_causal, memory_context, memory_correct, memory_evidence,
+    memory_ground, memory_quality, memory_query, memory_resolve, memory_similar, memory_stats,
+    memory_suggest, memory_temporal, memory_traverse, memory_workspace_add,
+    memory_workspace_compare, memory_workspace_create, memory_workspace_list,
+    memory_workspace_query, memory_workspace_xref, session_end, session_start,
 };
 
 /// Registry of all available MCP tools.
@@ -33,6 +35,18 @@ impl ToolRegistry {
             memory_causal::definition(),
             memory_temporal::definition(),
             memory_stats::definition(),
+            // V2: Grounding (anti-hallucination)
+            memory_ground::definition(),
+            memory_evidence::definition(),
+            memory_suggest::definition(),
+            // V2: Multi-context workspaces
+            memory_workspace_create::definition(),
+            memory_workspace_add::definition(),
+            memory_workspace_list::definition(),
+            memory_workspace_query::definition(),
+            memory_workspace_compare::definition(),
+            memory_workspace_xref::definition(),
+            // Session lifecycle
             session_start::definition(),
             session_end::definition(),
         ]
@@ -59,6 +73,18 @@ impl ToolRegistry {
             "memory_causal" => memory_causal::execute(args, session).await,
             "memory_temporal" => memory_temporal::execute(args, session).await,
             "memory_stats" => memory_stats::execute(args, session).await,
+            // V2: Grounding
+            "memory_ground" => memory_ground::execute(args, session).await,
+            "memory_evidence" => memory_evidence::execute(args, session).await,
+            "memory_suggest" => memory_suggest::execute(args, session).await,
+            // V2: Workspaces
+            "memory_workspace_create" => memory_workspace_create::execute(args, session).await,
+            "memory_workspace_add" => memory_workspace_add::execute(args, session).await,
+            "memory_workspace_list" => memory_workspace_list::execute(args, session).await,
+            "memory_workspace_query" => memory_workspace_query::execute(args, session).await,
+            "memory_workspace_compare" => memory_workspace_compare::execute(args, session).await,
+            "memory_workspace_xref" => memory_workspace_xref::execute(args, session).await,
+            // Session
             "session_start" => session_start::execute(args, session).await,
             "session_end" => session_end::execute(args, session).await,
             _ => Err(McpError::ToolNotFound(name.to_string())),

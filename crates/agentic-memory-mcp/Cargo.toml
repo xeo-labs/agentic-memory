@@ -1,6 +1,6 @@
 [package]
 name = "agentic-memory-mcp"
-version = "0.1.7"
+version = "0.3.0"
 edition = "2021"
 authors = ["Agentra Labs <contact@agentralabs.tech>"]
 description = "MCP server for AgenticMemory - universal LLM access to persistent graph memory"
@@ -12,7 +12,7 @@ categories = ["development-tools", "memory-management"]
 
 [dependencies]
 # AgenticMemory core library
-agentic-memory = { version = "0.2.7", path = "../agentic-memory" }
+agentic-memory = { version = "0.3.0", path = "../agentic-memory" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentic-brain"
-version = "0.2.1"
+version = "0.3.0"
 description = "Portable binary graph memory for AI agents"
 readme = "README.md"
 license = "MIT"
