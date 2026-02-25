@@ -237,7 +237,7 @@ curl -fsSL https://agentralabs.tech/install/memory/server | bash
 | GitHub installer (desktop profile) | `curl -fsSL https://agentralabs.tech/install/memory/desktop \| bash` | Explicit desktop profile behavior |
 | GitHub installer (terminal profile) | `curl -fsSL https://agentralabs.tech/install/memory/terminal \| bash` | Installs binaries only; no desktop config writes |
 | GitHub installer (server profile) | `curl -fsSL https://agentralabs.tech/install/memory/server \| bash` | Installs binaries only; server-safe behavior |
-| crates.io paired crates (official) | `cargo install agentic-memory agentic-memory-mcp` | Installs `amem` and `agentic-memory-mcp` |
+| crates.io paired crates (official) | `cargo install agentic-memory-cli agentic-memory-mcp` | Installs `amem` and `agentic-memory-mcp` |
 | PyPI (SDK + installer) | `pip install agentic-brain` / `pip install amem-installer` | Python SDK and auto-connector tools |
 | npm (wasm) | `npm install @agenticamem/memory` | WASM-based memory SDK for Node.js and browser |
 
@@ -256,7 +256,7 @@ If `.amem/.acb/.avis` files are on another machine, sync them to the server firs
 |:---|:---|
 | **Just give me memory** | Run the one-liner above |
 | **Python developer** | `pip install agentic-brain` |
-| **Rust developer** | `cargo install agentic-memory-mcp` |
+| **Rust developer** | `cargo install agentic-memory-cli agentic-memory-mcp` |
 | **Connect all AI tools** | `pip install amem-installer && amem-install install --auto` |
 
 <details>
@@ -273,10 +273,15 @@ pip install agentic-brain[ollama]      # Local models
 pip install agentic-brain[all]         # Everything
 ```
 
-**Rust:**
+**Rust CLI + MCP:**
 ```bash
-cargo install agentic-memory           # Core CLI (amem)
+cargo install agentic-memory-cli       # CLI (amem)
 cargo install agentic-memory-mcp       # MCP server
+```
+
+**Rust library:**
+```bash
+cargo add agentic-memory
 ```
 
 </details>
@@ -569,8 +574,10 @@ This is a Cargo workspace monorepo containing the core library, MCP server, and 
 agentic-memory/
 ├── Cargo.toml                    # Workspace root
 ├── crates/
-│   ├── agentic-memory/           # Core library (crates.io: agentic-memory v0.2.0)
-│   └── agentic-memory-mcp/       # MCP server (crates.io: agentic-memory-mcp v0.1.0)
+│   ├── agentic-memory/           # Core library (crates.io: agentic-memory v0.3.1)
+│   ├── agentic-memory-cli/       # CLI (crates.io: agentic-memory-cli v0.3.1)
+│   ├── agentic-memory-mcp/       # MCP server (crates.io: agentic-memory-mcp v0.3.1)
+│   └── agentic-memory-ffi/       # FFI bindings (crates.io: agentic-memory-ffi v0.3.1)
 ├── tests/bridge/                 # Integration tests (core ↔ MCP)
 ├── python/                       # Python SDK (PyPI: agentic-brain)
 ├── agent/                        # Terminal test agent
@@ -614,7 +621,7 @@ Configure Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_c
 
 ---
 
-## Roadmap: v0.2.0 — Remote Server Support
+## Roadmap: Next — Remote Server Support
 
 The next release is planned to add HTTP/SSE transport for remote deployments. Track progress in [#1](https://github.com/agentralabs/agentic-memory/issues/1).
 
