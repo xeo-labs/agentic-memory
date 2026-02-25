@@ -574,10 +574,10 @@ This is a Cargo workspace monorepo containing the core library, MCP server, and 
 agentic-memory/
 ├── Cargo.toml                    # Workspace root
 ├── crates/
-│   ├── agentic-memory/           # Core library (crates.io: agentic-memory v0.3.1)
-│   ├── agentic-memory-cli/       # CLI (crates.io: agentic-memory-cli v0.3.1)
-│   ├── agentic-memory-mcp/       # MCP server (crates.io: agentic-memory-mcp v0.3.1)
-│   └── agentic-memory-ffi/       # FFI bindings (crates.io: agentic-memory-ffi v0.3.1)
+│   ├── agentic-memory/           # Core library (crates.io: agentic-memory v0.3.2)
+│   ├── agentic-memory-cli/       # CLI (crates.io: agentic-memory-cli v0.3.2)
+│   ├── agentic-memory-mcp/       # MCP server (crates.io: agentic-memory-mcp v0.3.2)
+│   └── agentic-memory-ffi/       # FFI bindings (crates.io: agentic-memory-ffi v0.3.2)
 ├── tests/bridge/                 # Integration tests (core ↔ MCP)
 ├── python/                       # Python SDK (PyPI: agentic-brain)
 ├── agent/                        # Terminal test agent
