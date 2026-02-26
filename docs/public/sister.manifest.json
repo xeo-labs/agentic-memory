@@ -3,6 +3,7 @@
   "name": "AgenticMemory",
   "include_landing": true,
   "page_ids": [
+    "overview",
     "experience-with-vs-without",
     "quickstart",
     "installation",
