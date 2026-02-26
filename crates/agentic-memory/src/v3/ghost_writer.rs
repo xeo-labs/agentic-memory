@@ -457,11 +457,16 @@ impl GhostWriter {
         // Session info
         md.push_str(&format!("**Session:** `{}`\n\n", context.session_id));
 
-        // Recent decisions (most important — shown first)
+        // Recent decisions (most important — shown first, deduplicated)
         if !context.decisions.is_empty() {
             md.push_str("## Recent Decisions\n\n");
-            for (i, decision) in context.decisions.iter().enumerate() {
-                md.push_str(&format!("{}. {}\n", i + 1, decision));
+            let mut seen = std::collections::HashSet::new();
+            let mut idx = 0;
+            for decision in &context.decisions {
+                if seen.insert(decision) {
+                    idx += 1;
+                    md.push_str(&format!("{}. {}\n", idx, decision));
+                }
             }
             md.push('\n');
         }

@@ -172,7 +172,14 @@ async fn build_context_from_v2(
         block_count: graph.node_count(),
         recent_messages,
         files_touched: vec![], // V2 doesn't track file operations
-        decisions: decisions.iter().map(|d| d.content.clone()).collect(),
+        decisions: {
+            let mut seen = std::collections::HashSet::new();
+            decisions
+                .iter()
+                .filter(|d| seen.insert(d.content.clone()))
+                .map(|d| d.content.clone())
+                .collect()
+        },
         errors_resolved: vec![], // V2 doesn't track error resolution
         all_known_files: vec![], // V2 doesn't track files
     })

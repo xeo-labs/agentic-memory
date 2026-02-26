@@ -516,7 +516,9 @@ impl MemoryEngineV3 {
                     _ => {}
                 },
                 BlockContent::Decision { decision, .. } => {
-                    decisions.push(decision.clone());
+                    if !decisions.contains(decision) {
+                        decisions.push(decision.clone());
+                    }
                 }
                 BlockContent::Checkpoint { .. } => {
                     last_checkpoint = Some(block.clone());
@@ -645,7 +647,9 @@ impl MemoryEngineV3 {
                     files_touched.push((path.clone(), format!("{:?}", operation)));
                 }
                 BlockContent::Decision { decision, .. } => {
-                    decisions.push(decision.clone());
+                    if !decisions.contains(decision) {
+                        decisions.push(decision.clone());
+                    }
                 }
                 BlockContent::Error {
                     error_type,
