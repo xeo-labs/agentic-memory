@@ -81,7 +81,10 @@ impl SemanticIndex {
             .iter()
             .map(|(seq, text)| {
                 let text_lower = text.to_lowercase();
-                let matches = query_words.iter().filter(|w| text_lower.contains(*w)).count();
+                let matches = query_words
+                    .iter()
+                    .filter(|w| text_lower.contains(*w))
+                    .count();
                 let score = matches as f32 / query_words.len() as f32;
                 (*seq, score)
             })

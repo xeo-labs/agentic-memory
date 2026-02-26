@@ -15,21 +15,13 @@ use std::time::{Duration, Instant};
 #[derive(Debug)]
 pub enum StorageError {
     /// Disk is full
-    DiskFull {
-        needed: usize,
-        available: usize,
-    },
+    DiskFull { needed: usize, available: usize },
     /// No writable location found
     NoWritableLocation,
     /// File corruption detected
-    Corruption {
-        details: String,
-    },
+    Corruption { details: String },
     /// Permission denied
-    PermissionDenied {
-        path: PathBuf,
-        operation: String,
-    },
+    PermissionDenied { path: PathBuf, operation: String },
     /// IO error
     Io(std::io::Error),
     /// Serialization error
@@ -40,7 +32,11 @@ impl std::fmt::Display for StorageError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::DiskFull { needed, available } => {
-                write!(f, "Disk full: need {} bytes, only {} available", needed, available)
+                write!(
+                    f,
+                    "Disk full: need {} bytes, only {} available",
+                    needed, available
+                )
             }
             Self::NoWritableLocation => write!(f, "No writable location found"),
             Self::Corruption { details } => write!(f, "Corruption detected: {}", details),
@@ -112,12 +108,28 @@ impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::MissingField(field) => write!(f, "Missing required field: {}", field),
-            Self::InvalidValue { field, expected, got } => {
-                write!(f, "Invalid value for {}: expected {}, got {}", field, expected, got)
+            Self::InvalidValue {
+                field,
+                expected,
+                got,
+            } => {
+                write!(
+                    f,
+                    "Invalid value for {}: expected {}, got {}",
+                    field, expected, got
+                )
             }
             Self::EmptyValue(field) => write!(f, "Empty value for required field: {}", field),
-            Self::TooLarge { field, max_bytes, got_bytes } => {
-                write!(f, "Value too large for {}: max {} bytes, got {} bytes", field, max_bytes, got_bytes)
+            Self::TooLarge {
+                field,
+                max_bytes,
+                got_bytes,
+            } => {
+                write!(
+                    f,
+                    "Value too large for {}: max {} bytes, got {} bytes",
+                    field, max_bytes, got_bytes
+                )
             }
         }
     }
@@ -198,7 +210,9 @@ pub fn find_writable_location() -> Result<PathBuf, StorageError> {
         dirs::data_local_dir().map(|d| d.join("agentic-memory")),
         dirs::home_dir().map(|d| d.join(".agentic-memory")),
         Some(PathBuf::from("/tmp/agentic-memory")),
-        std::env::current_dir().ok().map(|d| d.join(".agentic-memory")),
+        std::env::current_dir()
+            .ok()
+            .map(|d| d.join(".agentic-memory")),
     ];
 
     for candidate in candidates.into_iter().flatten() {
@@ -389,10 +403,7 @@ impl ProjectIsolation {
     }
 
     fn generate_project_id() -> String {
-        format!(
-            "proj_{}",
-            &uuid::Uuid::new_v4().to_string()[..8]
-        )
+        format!("proj_{}", &uuid::Uuid::new_v4().to_string()[..8])
     }
 
     fn project_data_dir(project_id: &str) -> PathBuf {
@@ -631,10 +642,7 @@ pub fn safe_write_to_claude(target: &Path, content: &str) -> Result<(), std::io:
 }
 
 /// Merge content preserving user sections marked with <!-- USER_START/END -->
-pub fn merge_preserving_user_sections(
-    existing: &str,
-    our_content: &str,
-) -> String {
+pub fn merge_preserving_user_sections(existing: &str, our_content: &str) -> String {
     // Find user sections
     let mut user_sections = Vec::new();
     let mut search_from = 0;
@@ -746,7 +754,10 @@ mod tests {
             assert!(lock_path.exists(), "Lock file should exist while held");
         }
         // Lock should be released on drop
-        assert!(!lock_path.exists(), "Lock file should be removed after drop");
+        assert!(
+            !lock_path.exists(),
+            "Lock file should be removed after drop"
+        );
     }
 
     #[test]
@@ -757,10 +768,7 @@ mod tests {
         // Create a fake lock file (simulating another process)
         std::fs::write(&lock_path, "99999999").unwrap(); // Fake PID
 
-        let result = FileLock::acquire(
-            &dir.path().join("test.dat"),
-            Duration::from_millis(200),
-        );
+        let result = FileLock::acquire(&dir.path().join("test.dat"), Duration::from_millis(200));
         // Should eventually succeed or timeout — on most systems the PID won't exist
         // so the stale lock detection will break it
         assert!(result.is_ok() || matches!(result, Err(LockError::Timeout)));
@@ -825,7 +833,10 @@ mod tests {
     fn test_detect_content_type_binary() {
         // Random bytes that aren't valid UTF-8
         let binary = vec![0xFF, 0xFE, 0x00, 0x01, 0x80, 0x81, 0x82, 0x83];
-        assert!(matches!(detect_content_type(&binary), ContentType::Binary(_)));
+        assert!(matches!(
+            detect_content_type(&binary),
+            ContentType::Binary(_)
+        ));
     }
 
     #[test]
@@ -915,7 +926,8 @@ mod tests {
 
     #[test]
     fn test_merge_preserving_user_sections_with_sections() {
-        let existing = "some text\n<!-- USER_START -->\nMy custom notes\n<!-- USER_END -->\nmore text";
+        let existing =
+            "some text\n<!-- USER_START -->\nMy custom notes\n<!-- USER_END -->\nmore text";
         let result = merge_preserving_user_sections(existing, "new auto content");
         assert!(result.contains("new auto content"));
         assert!(result.contains("<!-- USER_START -->"));

@@ -1,10 +1,10 @@
 //! Five indexes for the V3 immortal architecture.
 
-pub mod temporal;
-pub mod semantic;
 pub mod causal;
 pub mod entity;
 pub mod procedural;
+pub mod semantic;
+pub mod temporal;
 
 use super::block::{Block, BlockHash};
 

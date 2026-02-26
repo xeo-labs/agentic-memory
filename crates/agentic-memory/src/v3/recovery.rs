@@ -104,7 +104,11 @@ impl WriteAheadLog {
 
             // Sanity check length (max 100MB per entry)
             if len > 100 * 1024 * 1024 {
-                log::warn!("WAL entry at position {} has unreasonable length {}, skipping", pos, len);
+                log::warn!(
+                    "WAL entry at position {} has unreasonable length {}, skipping",
+                    pos,
+                    len
+                );
                 skipped += 1;
                 // Try to find next valid entry by scanning forward
                 if self.try_skip_to_next_entry(&mut reader, file_len).is_err() {
@@ -136,31 +140,47 @@ impl WriteAheadLog {
                     if block.verify() {
                         entries.push(block);
                     } else {
-                        log::warn!("WAL entry at position {} failed block verification, skipping", pos);
+                        log::warn!(
+                            "WAL entry at position {} failed block verification, skipping",
+                            pos
+                        );
                         skipped += 1;
                     }
                 } else {
-                    log::warn!("WAL entry at position {} failed deserialization, skipping", pos);
+                    log::warn!(
+                        "WAL entry at position {} failed deserialization, skipping",
+                        pos
+                    );
                     skipped += 1;
                 }
             } else {
                 log::warn!(
                     "WAL checksum mismatch at position {} (stored={:#x}, computed={:#x}), skipping",
-                    pos, stored_checksum, computed_checksum
+                    pos,
+                    stored_checksum,
+                    computed_checksum
                 );
                 skipped += 1;
             }
         }
 
         if skipped > 0 {
-            log::warn!("WAL recovery skipped {} corrupt entries, recovered {}", skipped, entries.len());
+            log::warn!(
+                "WAL recovery skipped {} corrupt entries, recovered {}",
+                skipped,
+                entries.len()
+            );
         }
 
         Ok(entries)
     }
 
     /// Try to find next valid WAL entry after corruption
-    fn try_skip_to_next_entry(&self, reader: &mut BufReader<File>, file_len: u64) -> Result<(), std::io::Error> {
+    fn try_skip_to_next_entry(
+        &self,
+        reader: &mut BufReader<File>,
+        file_len: u64,
+    ) -> Result<(), std::io::Error> {
         // Scan byte-by-byte looking for a reasonable sequence number
         let mut byte = [0u8; 1];
         let scan_limit = 1024; // Don't scan more than 1KB ahead
@@ -169,12 +189,20 @@ impl WriteAheadLog {
         while scanned < scan_limit {
             let pos = reader.stream_position()?;
             if pos + 16 >= file_len {
-                return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of WAL"));
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::UnexpectedEof,
+                    "End of WAL",
+                ));
             }
 
             match reader.read_exact(&mut byte) {
                 Ok(_) => scanned += 1,
-                Err(_) => return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of WAL")),
+                Err(_) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::UnexpectedEof,
+                        "End of WAL",
+                    ))
+                }
             }
 
             // Try reading a sequence number at current position
@@ -183,7 +211,9 @@ impl WriteAheadLog {
                 // Peek at potential entry
                 let mut peek_seq = [0u8; 8];
                 let mut peek_len = [0u8; 4];
-                if reader.read_exact(&mut peek_seq).is_ok() && reader.read_exact(&mut peek_len).is_ok() {
+                if reader.read_exact(&mut peek_seq).is_ok()
+                    && reader.read_exact(&mut peek_len).is_ok()
+                {
                     let seq = u64::from_le_bytes(peek_seq);
                     let len = u32::from_le_bytes(peek_len) as usize;
                     // Reasonable sequence number and length?
@@ -200,7 +230,10 @@ impl WriteAheadLog {
             }
         }
 
-        Err(std::io::Error::new(std::io::ErrorKind::Other, "Could not find next valid WAL entry"))
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Could not find next valid WAL entry",
+        ))
     }
 
     /// Clear WAL after successful checkpoint

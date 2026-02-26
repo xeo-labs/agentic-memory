@@ -7,8 +7,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use agentic_memory::v3::{
-    BlockHash, BoundaryType, FileOperation, MemoryEngineV3,
-    RetrievalRequest, RetrievalStrategy,
+    BlockHash, BoundaryType, FileOperation, MemoryEngineV3, RetrievalRequest, RetrievalStrategy,
 };
 
 use crate::types::{McpError, McpResult, ToolCallResult, ToolDefinition};
@@ -62,10 +61,7 @@ pub fn capture_message_def() -> ToolDefinition {
     }
 }
 
-pub async fn capture_message_exec(
-    args: Value,
-    engine: &SharedEngine,
-) -> McpResult<ToolCallResult> {
+pub async fn capture_message_exec(args: Value, engine: &SharedEngine) -> McpResult<ToolCallResult> {
     let params: CaptureMessageParams =
         serde_json::from_value(args).map_err(|e| McpError::InvalidParams(e.to_string()))?;
 
@@ -76,7 +72,12 @@ pub async fn capture_message_exec(
         "user" => eng.capture_user_message(&params.content, params.tokens),
         "assistant" => eng.capture_assistant_message(&params.content, params.tokens),
         "system" => eng.capture_user_message(&params.content, params.tokens),
-        _ => return Err(McpError::InvalidParams(format!("Unknown role: {}", params.role))),
+        _ => {
+            return Err(McpError::InvalidParams(format!(
+                "Unknown role: {}",
+                params.role
+            )))
+        }
     }
     .map_err(|e| McpError::InternalError(e.to_string()))?;
 
@@ -117,10 +118,7 @@ pub fn capture_tool_def() -> ToolDefinition {
     }
 }
 
-pub async fn capture_tool_exec(
-    args: Value,
-    engine: &SharedEngine,
-) -> McpResult<ToolCallResult> {
+pub async fn capture_tool_exec(args: Value, engine: &SharedEngine) -> McpResult<ToolCallResult> {
     let params: CaptureToolParams =
         serde_json::from_value(args).map_err(|e| McpError::InvalidParams(e.to_string()))?;
 
@@ -176,10 +174,7 @@ pub fn capture_file_def() -> ToolDefinition {
     }
 }
 
-pub async fn capture_file_exec(
-    args: Value,
-    engine: &SharedEngine,
-) -> McpResult<ToolCallResult> {
+pub async fn capture_file_exec(args: Value, engine: &SharedEngine) -> McpResult<ToolCallResult> {
     let params: CaptureFileParams =
         serde_json::from_value(args).map_err(|e| McpError::InvalidParams(e.to_string()))?;
 
@@ -189,7 +184,12 @@ pub async fn capture_file_exec(
         "update" => FileOperation::Update,
         "delete" => FileOperation::Delete,
         "rename" => FileOperation::Rename,
-        _ => return Err(McpError::InvalidParams(format!("Unknown operation: {}", params.operation))),
+        _ => {
+            return Err(McpError::InvalidParams(format!(
+                "Unknown operation: {}",
+                params.operation
+            )))
+        }
     };
 
     let eng = engine.lock().await;
@@ -199,9 +199,9 @@ pub async fn capture_file_exec(
         .capture_file_operation(
             &params.path,
             op,
-            None,         // content_hash
+            None, // content_hash
             params.lines,
-            params.diff,  // diff: Option<String>
+            params.diff, // diff: Option<String>
         )
         .map_err(|e| McpError::InternalError(e.to_string()))?;
 
@@ -327,7 +327,12 @@ pub async fn capture_boundary_exec(
         "compaction" => BoundaryType::Compaction,
         "context_pressure" => BoundaryType::ContextPressure,
         "checkpoint" => BoundaryType::Checkpoint,
-        _ => return Err(McpError::InvalidParams(format!("Unknown boundary type: {}", params.boundary_type))),
+        _ => {
+            return Err(McpError::InvalidParams(format!(
+                "Unknown boundary type: {}",
+                params.boundary_type
+            )))
+        }
     };
 
     let eng = engine.lock().await;
@@ -372,7 +377,9 @@ fn default_strategy() -> String {
 pub fn retrieve_def() -> ToolDefinition {
     ToolDefinition {
         name: "memory_retrieve".to_string(),
-        description: Some("Smart context retrieval - assemble perfect context for a query".to_string()),
+        description: Some(
+            "Smart context retrieval - assemble perfect context for a query".to_string(),
+        ),
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -390,10 +397,7 @@ pub fn retrieve_def() -> ToolDefinition {
     }
 }
 
-pub async fn retrieve_exec(
-    args: Value,
-    engine: &SharedEngine,
-) -> McpResult<ToolCallResult> {
+pub async fn retrieve_exec(args: Value, engine: &SharedEngine) -> McpResult<ToolCallResult> {
     let params: RetrieveParams =
         serde_json::from_value(args).map_err(|e| McpError::InvalidParams(e.to_string()))?;
 
@@ -455,10 +459,7 @@ pub fn resurrect_def() -> ToolDefinition {
     }
 }
 
-pub async fn resurrect_exec(
-    args: Value,
-    engine: &SharedEngine,
-) -> McpResult<ToolCallResult> {
+pub async fn resurrect_exec(args: Value, engine: &SharedEngine) -> McpResult<ToolCallResult> {
     let params: ResurrectParams =
         serde_json::from_value(args).map_err(|e| McpError::InvalidParams(e.to_string()))?;
 
@@ -543,10 +544,7 @@ pub fn search_temporal_def() -> ToolDefinition {
     }
 }
 
-pub async fn search_temporal_exec(
-    args: Value,
-    engine: &SharedEngine,
-) -> McpResult<ToolCallResult> {
+pub async fn search_temporal_exec(args: Value, engine: &SharedEngine) -> McpResult<ToolCallResult> {
     let params: SearchTemporalParams =
         serde_json::from_value(args).map_err(|e| McpError::InvalidParams(e.to_string()))?;
 
@@ -611,10 +609,7 @@ pub fn search_semantic_def() -> ToolDefinition {
     }
 }
 
-pub async fn search_semantic_exec(
-    args: Value,
-    engine: &SharedEngine,
-) -> McpResult<ToolCallResult> {
+pub async fn search_semantic_exec(args: Value, engine: &SharedEngine) -> McpResult<ToolCallResult> {
     let params: SearchSemanticParams =
         serde_json::from_value(args).map_err(|e| McpError::InvalidParams(e.to_string()))?;
 
@@ -666,10 +661,7 @@ pub fn search_entity_def() -> ToolDefinition {
     }
 }
 
-pub async fn search_entity_exec(
-    args: Value,
-    engine: &SharedEngine,
-) -> McpResult<ToolCallResult> {
+pub async fn search_entity_exec(args: Value, engine: &SharedEngine) -> McpResult<ToolCallResult> {
     let params: SearchEntityParams =
         serde_json::from_value(args).map_err(|e| McpError::InvalidParams(e.to_string()))?;
 
@@ -747,10 +739,7 @@ pub fn v3_stats_def() -> ToolDefinition {
     }
 }
 
-pub async fn v3_stats_exec(
-    _args: Value,
-    engine: &SharedEngine,
-) -> McpResult<ToolCallResult> {
+pub async fn v3_stats_exec(_args: Value, engine: &SharedEngine) -> McpResult<ToolCallResult> {
     let eng = engine.lock().await;
     let eng = require_engine(&eng)?;
 

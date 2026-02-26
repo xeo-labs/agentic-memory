@@ -24,11 +24,11 @@ pub struct TierConfig {
 impl Default for TierConfig {
     fn default() -> Self {
         Self {
-            hot_threshold: Duration::from_secs(24 * 60 * 60),       // 24 hours
-            warm_threshold: Duration::from_secs(30 * 24 * 60 * 60),  // 30 days
+            hot_threshold: Duration::from_secs(24 * 60 * 60), // 24 hours
+            warm_threshold: Duration::from_secs(30 * 24 * 60 * 60), // 30 days
             cold_threshold: Duration::from_secs(365 * 24 * 60 * 60), // 1 year
-            hot_max_bytes: 10 * 1024 * 1024,   // 10 MB
-            warm_max_bytes: 100 * 1024 * 1024,  // 100 MB
+            hot_max_bytes: 10 * 1024 * 1024,                  // 10 MB
+            warm_max_bytes: 100 * 1024 * 1024,                // 100 MB
         }
     }
 }
@@ -173,7 +173,10 @@ impl TieredStorage {
         let pressure = total as f64 / max_memory_bytes.max(1) as f64;
 
         if pressure > 0.9 {
-            log::warn!("Memory pressure at {:.1}%, forcing eviction", pressure * 100.0);
+            log::warn!(
+                "Memory pressure at {:.1}%, forcing eviction",
+                pressure * 100.0
+            );
             self.force_eviction(max_memory_bytes, 0.7);
         } else if pressure > 0.8 {
             self.maybe_demote();
@@ -187,11 +190,7 @@ impl TieredStorage {
         // Evict oldest from hot to warm
         while self.hot_bytes > target / 3 && !self.hot.is_empty() {
             // Find oldest block in hot tier
-            if let Some((&oldest_seq, _)) = self
-                .hot
-                .iter()
-                .min_by_key(|(_, b)| b.timestamp)
-            {
+            if let Some((&oldest_seq, _)) = self.hot.iter().min_by_key(|(_, b)| b.timestamp) {
                 if let Some(block) = self.hot.remove(&oldest_seq) {
                     self.hot_bytes -= block.size_bytes as usize;
                     self.warm_bytes += block.size_bytes as usize;
@@ -204,11 +203,7 @@ impl TieredStorage {
 
         // Evict oldest from warm to cold
         while self.warm_bytes > target / 3 && !self.warm.is_empty() {
-            if let Some((&oldest_seq, _)) = self
-                .warm
-                .iter()
-                .min_by_key(|(_, b)| b.timestamp)
-            {
+            if let Some((&oldest_seq, _)) = self.warm.iter().min_by_key(|(_, b)| b.timestamp) {
                 if let Some(block) = self.warm.remove(&oldest_seq) {
                     self.warm_bytes -= block.size_bytes as usize;
                     let data = serde_json::to_vec(&block).unwrap_or_default();

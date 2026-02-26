@@ -96,13 +96,9 @@ impl AutoCaptureMiddleware {
 
         let eng = self.engine.lock().await;
         if let Some(engine) = eng.as_ref() {
-            if let Err(e) = engine.capture_tool_call(
-                tool_name,
-                input,
-                Some(output),
-                Some(duration_ms),
-                success,
-            ) {
+            if let Err(e) =
+                engine.capture_tool_call(tool_name, input, Some(output), Some(duration_ms), success)
+            {
                 tracing::warn!("V3 auto-capture failed for tool {}: {}", tool_name, e);
             }
         }

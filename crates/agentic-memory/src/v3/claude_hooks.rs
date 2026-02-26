@@ -25,11 +25,7 @@ impl ClaudeHooks {
     }
 
     /// Hook called BEFORE every tool execution
-    pub fn on_tool_start(
-        _engine: &MemoryEngineV3,
-        _tool_name: &str,
-        _input: &serde_json::Value,
-    ) {
+    pub fn on_tool_start(_engine: &MemoryEngineV3, _tool_name: &str, _input: &serde_json::Value) {
         // We'll capture the full tool call when it completes
         // This is just for tracking that a tool started
     }
@@ -66,11 +62,7 @@ impl ClaudeHooks {
     }
 
     /// Hook called when Claude Code detects context pressure
-    pub fn on_context_pressure(
-        engine: &MemoryEngineV3,
-        current_tokens: u32,
-        max_tokens: u32,
-    ) {
+    pub fn on_context_pressure(engine: &MemoryEngineV3, current_tokens: u32, max_tokens: u32) {
         if current_tokens as f32 / max_tokens as f32 > 0.8 {
             // Context is getting full, capture checkpoint
             let _ = engine.capture_checkpoint(
@@ -92,11 +84,7 @@ impl ClaudeHooks {
         working_context: &str,
     ) {
         // Capture full checkpoint
-        let _ = engine.capture_checkpoint(
-            active_files.clone(),
-            working_context,
-            pending_tasks,
-        );
+        let _ = engine.capture_checkpoint(active_files.clone(), working_context, pending_tasks);
 
         // Capture the boundary event
         let _ = engine.capture_boundary(
@@ -109,23 +97,14 @@ impl ClaudeHooks {
     }
 
     /// Hook called AFTER compaction completes
-    pub fn on_post_compaction(
-        _engine: &MemoryEngineV3,
-        _context_tokens_after: u32,
-    ) {
+    pub fn on_post_compaction(_engine: &MemoryEngineV3, _context_tokens_after: u32) {
         // In practice, we'd update the last boundary block
         // with the post-compaction token count
     }
 
     /// Hook called at SESSION END
     pub fn on_session_end(engine: &MemoryEngineV3, summary: &str) {
-        let _ = engine.capture_boundary(
-            BoundaryType::SessionEnd,
-            0,
-            0,
-            summary,
-            None,
-        );
+        let _ = engine.capture_boundary(BoundaryType::SessionEnd, 0, 0, summary, None);
     }
 
     /// Hook called at SESSION START (resume)

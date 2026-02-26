@@ -43,9 +43,7 @@ impl V2ToV3Migration {
                     for node in graph.nodes() {
                         match v3_engine.capture_user_message(&node.content, None) {
                             Ok(_) => report.blocks_created += 1,
-                            Err(e) => {
-                                report.errors.push(format!("Node {}: {}", node.id, e))
-                            }
+                            Err(e) => report.errors.push(format!("Node {}: {}", node.id, e)),
                         }
                     }
 

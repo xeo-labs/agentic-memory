@@ -222,22 +222,54 @@ impl Block {
             BlockContent::Text { text, role, .. } => {
                 format!("[{}] {}", role.as_deref().unwrap_or("text"), text)
             }
-            BlockContent::Tool { tool_name, success, .. } => {
-                format!("tool:{} ({})", tool_name, if *success { "ok" } else { "err" })
+            BlockContent::Tool {
+                tool_name, success, ..
+            } => {
+                format!(
+                    "tool:{} ({})",
+                    tool_name,
+                    if *success { "ok" } else { "err" }
+                )
             }
-            BlockContent::File { path, operation, .. } => {
+            BlockContent::File {
+                path, operation, ..
+            } => {
                 format!("{:?} {}", operation, path)
             }
-            BlockContent::Decision { decision, confidence, .. } => {
-                format!("Decision({:.0}%): {}", confidence.unwrap_or(0.0) * 100.0, decision)
+            BlockContent::Decision {
+                decision,
+                confidence,
+                ..
+            } => {
+                format!(
+                    "Decision({:.0}%): {}",
+                    confidence.unwrap_or(0.0) * 100.0,
+                    decision
+                )
             }
-            BlockContent::Boundary { boundary_type, summary, .. } => {
+            BlockContent::Boundary {
+                boundary_type,
+                summary,
+                ..
+            } => {
                 format!("{:?}: {}", boundary_type, summary)
             }
-            BlockContent::Error { error_type, message, resolved, .. } => {
-                format!("{}:{} [{}]", error_type, message, if *resolved { "resolved" } else { "open" })
+            BlockContent::Error {
+                error_type,
+                message,
+                resolved,
+                ..
+            } => {
+                format!(
+                    "{}:{} [{}]",
+                    error_type,
+                    message,
+                    if *resolved { "resolved" } else { "open" }
+                )
             }
-            BlockContent::Checkpoint { working_context, .. } => {
+            BlockContent::Checkpoint {
+                working_context, ..
+            } => {
                 format!("Checkpoint: {}", working_context)
             }
             BlockContent::Binary { mime_type, data } => {
@@ -256,14 +288,22 @@ impl Block {
     pub fn extract_text(&self) -> Option<String> {
         match &self.content {
             BlockContent::Text { text, .. } => Some(text.clone()),
-            BlockContent::Decision { decision, reasoning, .. } => {
-                Some(format!("{} {}", decision, reasoning.as_deref().unwrap_or("")))
-            }
+            BlockContent::Decision {
+                decision,
+                reasoning,
+                ..
+            } => Some(format!(
+                "{} {}",
+                decision,
+                reasoning.as_deref().unwrap_or("")
+            )),
             BlockContent::Tool { tool_name, .. } => Some(tool_name.clone()),
             BlockContent::File { path, .. } => Some(path.clone()),
             BlockContent::Error { message, .. } => Some(message.clone()),
             BlockContent::Boundary { summary, .. } => Some(summary.clone()),
-            BlockContent::Checkpoint { working_context, .. } => Some(working_context.clone()),
+            BlockContent::Checkpoint {
+                working_context, ..
+            } => Some(working_context.clone()),
             _ => None,
         }
     }

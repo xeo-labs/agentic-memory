@@ -12,19 +12,19 @@
 //! - **GhostWriter**: Background sync to ALL AI coding assistants (Claude, Cursor, Windsurf, Cody)
 
 pub mod block;
+pub mod claude_hooks;
+pub mod compression;
+pub mod config;
+pub mod edge_cases;
+pub mod embeddings;
+pub mod engine;
+pub mod ghost_writer;
 pub mod immortal_log;
 pub mod indexes;
-pub mod tiered;
-pub mod retrieval;
-pub mod engine;
-pub mod config;
-pub mod embeddings;
-pub mod compression;
-pub mod recovery;
 pub mod migration;
-pub mod claude_hooks;
-pub mod ghost_writer;
-pub mod edge_cases;
+pub mod recovery;
+pub mod retrieval;
+pub mod tiered;
 
 #[cfg(feature = "encryption")]
 pub mod encryption;
@@ -37,29 +37,29 @@ pub mod tests;
 // ═══════════════════════════════════════════════════════════════════
 
 pub use block::{Block, BlockContent, BlockHash, BlockType, BoundaryType, FileOperation};
-pub use engine::{EngineConfig, EngineStats, MemoryEngineV3, ResurrectionResult, SessionResumeResult};
+pub use claude_hooks::ClaudeHooks;
+pub use compression::{compress, decompress, CompressionLevel};
+pub use config::MemoryV3Config;
+pub use edge_cases::{
+    atomic_write, check_disk_space, detect_content_type, find_writable_location,
+    merge_preserving_user_sections, normalize_content, normalize_path, paths_equal, safe_path,
+    safe_write_to_claude, validate_content_size, validated_timestamp, ContentType, FileLock,
+    IndexConsistencyReport, LockError, NormalizedContent, ProjectIsolation, RecoveryMarker,
+    StorageError, ValidationError,
+};
+pub use embeddings::EmbeddingManager;
+pub use engine::{
+    EngineConfig, EngineStats, MemoryEngineV3, ResurrectionResult, SessionResumeResult,
+};
+pub use ghost_writer::{ClientType, DetectedClient, GhostWriter};
 pub use immortal_log::{ImmortalLog, IntegrityReport};
 pub use indexes::{Index, IndexResult};
+pub use migration::V2ToV3Migration;
+pub use recovery::{RecoveryManager, WriteAheadLog};
 pub use retrieval::{
-    RetrievalCoverage, RetrievalRequest, RetrievalResult, RetrievalStrategy,
-    SmartRetrievalEngine,
+    RetrievalCoverage, RetrievalRequest, RetrievalResult, RetrievalStrategy, SmartRetrievalEngine,
 };
 pub use tiered::{TierConfig, TierStats, TieredStorage};
-pub use config::MemoryV3Config;
-pub use embeddings::EmbeddingManager;
-pub use compression::{compress, decompress, CompressionLevel};
-pub use recovery::{RecoveryManager, WriteAheadLog};
-pub use migration::V2ToV3Migration;
-pub use claude_hooks::ClaudeHooks;
-pub use ghost_writer::{ClientType, DetectedClient, GhostWriter};
-pub use edge_cases::{
-    StorageError, LockError, ValidationError, FileLock, ProjectIsolation,
-    NormalizedContent, ContentType, RecoveryMarker, IndexConsistencyReport,
-    normalize_content, detect_content_type, validate_content_size,
-    validated_timestamp, normalize_path, paths_equal, find_writable_location,
-    safe_path, atomic_write, check_disk_space, safe_write_to_claude,
-    merge_preserving_user_sections,
-};
 
 #[cfg(feature = "encryption")]
 pub use encryption::{decrypt, derive_key, encrypt, generate_key, EncryptionKey};

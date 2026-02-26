@@ -52,9 +52,7 @@ pub fn server_description_with_context(engine: &MemoryEngineV3) -> String {
     let context = engine.session_resume();
 
     if context.block_count == 0 {
-        return format!(
-            "AgenticMemory V3 Immortal Architecture — fresh session (0 blocks)"
-        );
+        return format!("AgenticMemory V3 Immortal Architecture — fresh session (0 blocks)");
     }
 
     format!(

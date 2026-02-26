@@ -5,9 +5,9 @@ mod tests {
     use crate::v3::block::*;
     use crate::v3::engine::*;
     use crate::v3::immortal_log::*;
+    use crate::v3::recovery::*;
     use crate::v3::retrieval::*;
     use crate::v3::tiered::*;
-    use crate::v3::recovery::*;
     use tempfile::TempDir;
 
     fn test_engine() -> (TempDir, MemoryEngineV3) {
@@ -30,7 +30,9 @@ mod tests {
     fn test_capture_message() {
         let (_dir, engine) = test_engine();
 
-        let hash = engine.capture_user_message("Hello, world!", Some(3)).unwrap();
+        let hash = engine
+            .capture_user_message("Hello, world!", Some(3))
+            .unwrap();
         assert_ne!(hash, BlockHash::zero());
 
         let hash2 = engine
@@ -62,13 +64,7 @@ mod tests {
         let (_dir, engine) = test_engine();
 
         let hash = engine
-            .capture_file_operation(
-                "/src/lib.rs",
-                FileOperation::Create,
-                None,
-                Some(100),
-                None,
-            )
+            .capture_file_operation("/src/lib.rs", FileOperation::Create, None, Some(100), None)
             .unwrap();
 
         assert_ne!(hash, BlockHash::zero());
@@ -111,9 +107,15 @@ mod tests {
     fn test_semantic_search() {
         let (_dir, engine) = test_engine();
 
-        engine.capture_user_message("How to implement a hash table in Rust", None).unwrap();
-        engine.capture_user_message("What is the weather today", None).unwrap();
-        engine.capture_user_message("Hash map implementation details", None).unwrap();
+        engine
+            .capture_user_message("How to implement a hash table in Rust", None)
+            .unwrap();
+        engine
+            .capture_user_message("What is the weather today", None)
+            .unwrap();
+        engine
+            .capture_user_message("Hash map implementation details", None)
+            .unwrap();
 
         let results = engine.search_semantic("hash table", 10);
         assert!(!results.is_empty());
@@ -155,9 +157,15 @@ mod tests {
     fn test_retrieval() {
         let (_dir, engine) = test_engine();
 
-        engine.capture_user_message("Implement the V3 block system", None).unwrap();
-        engine.capture_user_message("Test the immortal log", None).unwrap();
-        engine.capture_user_message("Fix compilation errors", None).unwrap();
+        engine
+            .capture_user_message("Implement the V3 block system", None)
+            .unwrap();
+        engine
+            .capture_user_message("Test the immortal log", None)
+            .unwrap();
+        engine
+            .capture_user_message("Fix compilation errors", None)
+            .unwrap();
 
         let result = engine.retrieve(RetrievalRequest {
             query: "V3 block".to_string(),
@@ -173,9 +181,13 @@ mod tests {
     fn test_resurrection() {
         let (_dir, engine) = test_engine();
 
-        engine.capture_user_message("Before the timestamp", None).unwrap();
+        engine
+            .capture_user_message("Before the timestamp", None)
+            .unwrap();
         let timestamp = chrono::Utc::now();
-        engine.capture_user_message("After the timestamp", None).unwrap();
+        engine
+            .capture_user_message("After the timestamp", None)
+            .unwrap();
 
         let result = engine.resurrect(timestamp);
         assert!(result.block_count >= 1);
@@ -242,8 +254,12 @@ mod tests {
             };
             let engine = MemoryEngineV3::open(config).unwrap();
 
-            engine.capture_user_message("Persisted message 1", None).unwrap();
-            engine.capture_user_message("Persisted message 2", None).unwrap();
+            engine
+                .capture_user_message("Persisted message 1", None)
+                .unwrap();
+            engine
+                .capture_user_message("Persisted message 2", None)
+                .unwrap();
         }
 
         {
@@ -279,13 +295,18 @@ mod tests {
         let (_dir, engine) = test_engine();
         // Whitespace-only is accepted but logged as warning
         let result = engine.capture_user_message("   \t  \n  ", None);
-        assert!(result.is_ok(), "Whitespace-only should be accepted (with warning)");
+        assert!(
+            result.is_ok(),
+            "Whitespace-only should be accepted (with warning)"
+        );
     }
 
     #[test]
     fn test_content_trimmed() {
         let (_dir, engine) = test_engine();
-        let hash = engine.capture_user_message("  Hello, world!  ", None).unwrap();
+        let hash = engine
+            .capture_user_message("  Hello, world!  ", None)
+            .unwrap();
         assert_ne!(hash, BlockHash::zero());
     }
 
@@ -433,7 +454,10 @@ mod tests {
         {
             let wal = WriteAheadLog::open(dir.path()).unwrap();
             let recovered = wal.recover().unwrap();
-            assert!(recovered.len() >= 1, "Should recover at least the valid entry");
+            assert!(
+                recovered.len() >= 1,
+                "Should recover at least the valid entry"
+            );
         }
     }
 
@@ -517,8 +541,8 @@ mod tests {
             hot_threshold: std::time::Duration::from_secs(1),
             warm_threshold: std::time::Duration::from_secs(60),
             cold_threshold: std::time::Duration::from_secs(3600),
-            hot_max_bytes: 1024,       // 1KB (very small)
-            warm_max_bytes: 4096,      // 4KB
+            hot_max_bytes: 1024,  // 1KB (very small)
+            warm_max_bytes: 4096, // 4KB
         };
 
         let mut storage = TieredStorage::new(config);
@@ -530,7 +554,11 @@ mod tests {
                 i,
                 BlockType::UserMessage,
                 BlockContent::Text {
-                    text: format!("Message {} with enough content to fill tiers {}", i, "x".repeat(50)),
+                    text: format!(
+                        "Message {} with enough content to fill tiers {}",
+                        i,
+                        "x".repeat(50)
+                    ),
                     role: None,
                     tokens: None,
                 },
@@ -539,7 +567,10 @@ mod tests {
         }
 
         let stats = storage.stats();
-        assert_eq!(stats.hot_blocks + stats.warm_blocks + stats.cold_blocks + stats.frozen_blocks, 100);
+        assert_eq!(
+            stats.hot_blocks + stats.warm_blocks + stats.cold_blocks + stats.frozen_blocks,
+            100
+        );
     }
 
     #[test]
@@ -685,10 +716,7 @@ mod tests {
             let e = engine.clone();
             handles.push(std::thread::spawn(move || {
                 for i in 0..10 {
-                    let _ = e.capture_user_message(
-                        &format!("Thread {} Message {}", t, i),
-                        None,
-                    );
+                    let _ = e.capture_user_message(&format!("Thread {} Message {}", t, i), None);
                 }
             }));
         }
@@ -723,8 +751,17 @@ mod tests {
                 checkpoint_interval: 100,
             };
             let engine = MemoryEngineV3::open(config).unwrap();
-            engine.capture_user_message("Survived the crash", None).unwrap();
-            engine.capture_decision("Important decision", Some("Because reasons"), vec![], Some(0.9)).unwrap();
+            engine
+                .capture_user_message("Survived the crash", None)
+                .unwrap();
+            engine
+                .capture_decision(
+                    "Important decision",
+                    Some("Because reasons"),
+                    vec![],
+                    Some(0.9),
+                )
+                .unwrap();
         }
 
         // Open with recovery

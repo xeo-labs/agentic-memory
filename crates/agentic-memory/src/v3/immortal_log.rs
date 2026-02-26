@@ -131,8 +131,7 @@ impl ImmortalLog {
         let block_len = block_data.len() as u32;
 
         // Seek to write position and write length prefix + data
-        self.file
-            .seek(std::io::SeekFrom::Start(self.write_pos))?;
+        self.file.seek(std::io::SeekFrom::Start(self.write_pos))?;
         self.file.write_all(&block_len.to_le_bytes())?;
         self.file.write_all(&block_data)?;
         self.file.flush()?;

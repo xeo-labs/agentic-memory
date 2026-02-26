@@ -8,10 +8,10 @@ use super::indexes::*;
 use super::recovery::RecoveryManager;
 use super::retrieval::*;
 use super::tiered::*;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use chrono::{DateTime, Utc};
 
 /// The V3 Memory Engine
 pub struct MemoryEngineV3 {
@@ -154,11 +154,26 @@ impl MemoryEngineV3 {
         let blocks: Vec<Block> = log.iter().collect();
 
         // Rebuild each index
-        self.temporal_index.write().unwrap().rebuild(blocks.iter().cloned());
-        self.semantic_index.write().unwrap().rebuild(blocks.iter().cloned());
-        self.causal_index.write().unwrap().rebuild(blocks.iter().cloned());
-        self.entity_index.write().unwrap().rebuild(blocks.iter().cloned());
-        self.procedural_index.write().unwrap().rebuild(blocks.iter().cloned());
+        self.temporal_index
+            .write()
+            .unwrap()
+            .rebuild(blocks.iter().cloned());
+        self.semantic_index
+            .write()
+            .unwrap()
+            .rebuild(blocks.iter().cloned());
+        self.causal_index
+            .write()
+            .unwrap()
+            .rebuild(blocks.iter().cloned());
+        self.entity_index
+            .write()
+            .unwrap()
+            .rebuild(blocks.iter().cloned());
+        self.procedural_index
+            .write()
+            .unwrap()
+            .rebuild(blocks.iter().cloned());
 
         // Rebuild tiered storage
         let mut storage = self.storage.write().unwrap();
