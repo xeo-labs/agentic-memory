@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "agentic-memory"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "argon2",
  "base64",
@@ -54,7 +54,7 @@ dependencies = [
 
 [[package]]
 name = "agentic-memory-cli"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "agentic-memory",
  "agentic-memory-mcp",
@@ -68,7 +68,7 @@ dependencies = [
 
 [[package]]
 name = "agentic-memory-ffi"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "agentic-memory",
  "pyo3",
@@ -78,7 +78,7 @@ dependencies = [
 
 [[package]]
 name = "agentic-memory-mcp"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "agentic-memory",
  "anyhow",

@@ -174,6 +174,14 @@ async fn main() -> anyhow::Result<()> {
             let maintenance_interval = session.maintenance_interval();
             let session = Arc::new(Mutex::new(session));
             let _maintenance_task = spawn_maintenance(session.clone(), maintenance_interval);
+
+            // V3 Ghost Writer: background sync to Claude, Cursor, Windsurf, Cody
+            #[cfg(feature = "v3")]
+            let _ghost_writer_task = {
+                tracing::info!("V3 feature enabled — starting Ghost Writer");
+                agentic_memory_mcp::ghost_bridge::spawn_ghost_writer(session.clone())
+            };
+
             let handler = ProtocolHandler::with_mode(session, memory_mode);
             let transport = StdioTransport::new(handler);
             transport.run().await?;

@@ -14,6 +14,8 @@ pub mod transport;
 pub mod types;
 
 #[cfg(feature = "v3")]
+pub mod ghost_bridge;
+#[cfg(feature = "v3")]
 pub mod v3_auto_capture;
 #[cfg(feature = "v3")]
 pub mod v3_greeting;
