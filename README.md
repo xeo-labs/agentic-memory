@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.4.0-blue.svg" alt="Version 0.4.0">
+  <a href="https://crates.io/crates/agentic-memory"><img src="https://img.shields.io/crates/v/agentic-memory.svg" alt="crates.io"></a>
   <img src="https://img.shields.io/badge/tests-470%20passing-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/clients-Claude%20%7C%20Cursor%20%7C%20Windsurf%20%7C%20Cody-orange.svg" alt="Multi-client">
 </p>
@@ -93,7 +93,7 @@ Six lines. Sixteen query types. One file holds everything. Works with Claude, GP
 
 ## V3: Immortal Architecture
 
-> **New in v0.4.0** -- Memory that never dies.
+> **New in v0.4.1** -- Memory that never dies.
 
 V3 adds a complete append-only, content-addressed storage layer with BLAKE3 integrity chains. Your agent's memory is now cryptographically tamper-proof, multi-client, and designed to last 20 years.
 
@@ -105,6 +105,7 @@ V3 adds a complete append-only, content-addressed storage layer with BLAKE3 inte
 - **Ghost Writer** -- Auto-syncs to Claude, Cursor, Windsurf, and Cody. Zero configuration.
 - **Smart Retrieval** -- Multi-index fusion with token budgeting. Perfect context assembly.
 - **Crash Recovery** -- WAL with CRC32 checksums. Survives anything.
+- **MCP Hardening** -- Content-Length framing with 8 MiB limit, JSON-RPC 2.0 validation, no silent fallbacks.
 
 ### Multi-Client Support
 
