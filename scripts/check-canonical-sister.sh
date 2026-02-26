@@ -341,6 +341,16 @@ assert_contains "content-length:" "$MCP_SRC"
 # JSON-RPC 2.0 version must be validated (reject non-2.0)
 assert_contains 'jsonrpc' "$MCP_SRC"
 
+# ── 24. Research paper directory ──────────────────────────────────────────
+# Every sister must have a paper/ directory with at least one paper-i-*
+# subfolder containing a .tex file and references.bib.
+
+assert_dir "paper"
+PAPER_I_DIR="$(ls -d paper/paper-i-* 2>/dev/null | head -1)"
+[ -n "$PAPER_I_DIR" ] || fail "Missing paper/paper-i-* directory"
+ls "$PAPER_I_DIR"/*.tex >/dev/null 2>&1 || fail "Missing .tex file in $PAPER_I_DIR"
+assert_file "$PAPER_I_DIR/references.bib"
+
 # ── Done ────────────────────────────────────────────────────────────────────
 
 echo "Canonical sister guardrails passed."
