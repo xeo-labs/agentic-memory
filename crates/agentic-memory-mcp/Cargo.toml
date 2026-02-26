@@ -1,6 +1,6 @@
 [package]
 name = "agentic-memory-mcp"
-version = "0.3.3"
+version = "0.4.0"
 edition = "2021"
 authors = ["Agentra Labs <contact@agentralabs.tech>"]
 description = "MCP server for AgenticMemory - universal LLM access to persistent graph memory"
@@ -12,7 +12,9 @@ categories = ["development-tools", "memory-management"]
 
 [dependencies]
 # AgenticMemory core library
-agentic-memory = { version = "0.3.3", path = "../agentic-memory" }
+agentic-memory = { version = "0.4.0", path = "../agentic-memory" }
+# V3 feature forwards to core crate
+# (V3 types are always available in core when v3 is enabled)
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -54,6 +56,7 @@ tokio-test = "0.4"
 default = ["stdio"]
 stdio = []
 sse = ["axum", "tower", "tower-http"]
+v3 = ["agentic-memory/v3"]
 all-transports = ["stdio", "sse"]
 
 [[bin]]

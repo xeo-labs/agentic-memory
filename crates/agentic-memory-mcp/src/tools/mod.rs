@@ -26,4 +26,7 @@ pub mod registry;
 pub mod session_end;
 pub mod session_start;
 
+#[cfg(feature = "v3")]
+pub mod v3_tools;
+
 pub use registry::ToolRegistry;

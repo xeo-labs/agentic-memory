@@ -1,6 +1,6 @@
 [package]
 name = "agentic-memory"
-version = "0.3.3"
+version = "0.4.0"
 edition = "2021"
 description = "Binary graph-based memory system for AI agents"
 license = "MIT"
@@ -20,10 +20,12 @@ name = "amem"
 path = "src/bin/amem.rs"
 
 [features]
-default = ["cli", "format", "ffi"]
+default = ["cli", "format", "ffi", "v3"]
 cli = ["dep:clap", "dep:clap_complete", "dep:rustyline", "format"]
 format = ["dep:lz4_flex", "dep:memmap2"]
 ffi = ["format"]
+v3 = []
+encryption = ["dep:chacha20poly1305", "dep:argon2"]
 
 [dependencies]
 # Compression (optional — needed only for .amem file I/O)
@@ -48,7 +50,20 @@ serde_json = "1"
 memmap2 = { version = "0.9", optional = true }
 
 # Timestamp
-chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+
+# V3 Immortal Architecture dependencies
+blake3 = "1.5"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+hex = "0.4"
+crc32fast = "1.3"
+toml = "0.8"
+dirs = "5.0"
+base64 = "0.22"
+
+# V3 encryption (optional)
+chacha20poly1305 = { version = "0.10", optional = true }
+argon2 = { version = "0.5", optional = true }
 
 [dev-dependencies]
 # Testing

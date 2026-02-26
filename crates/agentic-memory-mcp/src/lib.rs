@@ -13,6 +13,13 @@ pub mod tools;
 pub mod transport;
 pub mod types;
 
+#[cfg(feature = "v3")]
+pub mod v3_greeting;
+#[cfg(feature = "v3")]
+pub mod v3_resources;
+#[cfg(feature = "v3")]
+pub mod v3_auto_capture;
+
 pub use config::ServerConfig;
 pub use protocol::ProtocolHandler;
 pub use session::SessionManager;

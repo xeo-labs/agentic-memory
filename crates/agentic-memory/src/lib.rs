@@ -14,6 +14,10 @@ pub mod graph;
 pub mod index;
 pub mod types;
 
+// V3: Immortal Architecture — Memory That Never Dies
+#[cfg(feature = "v3")]
+pub mod v3;
+
 // Re-export commonly used types at the crate root
 pub use engine::{
     CausalParams, CausalResult, DecayReport, IngestResult, MemoryQualityParams,
@@ -43,3 +47,12 @@ pub use engine::{
     WeakenedNode,
 };
 pub use types::header::feature_flags;
+
+// V3 re-exports
+#[cfg(feature = "v3")]
+pub use v3::MemoryEngineV3;
+
+/// Check if V3 feature is enabled
+pub fn v3_enabled() -> bool {
+    cfg!(feature = "v3")
+}

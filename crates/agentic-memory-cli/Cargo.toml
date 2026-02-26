@@ -1,6 +1,6 @@
 [package]
 name = "agentic-memory-cli"
-version = "0.3.3"
+version = "0.4.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/agentralabs/agentic-memory"
@@ -15,8 +15,8 @@ name = "amem"
 path = "src/main.rs"
 
 [dependencies]
-agentic-memory = { path = "../agentic-memory", version = "0.3.3", features = ["cli", "format"] }
-agentic-memory-mcp = { path = "../agentic-memory-mcp", version = "0.3.3" }
+agentic-memory = { path = "../agentic-memory", version = "0.4.0", features = ["cli", "format"] }
+agentic-memory-mcp = { path = "../agentic-memory-mcp", version = "0.4.0" }
 clap = { version = "4", features = ["derive"] }
 clap_complete = "4"
 rustyline = "14"
