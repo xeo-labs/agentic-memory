@@ -131,47 +131,48 @@ jobs:
           prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'beta') }}
 
   publish-crate:
-    name: Publish to crates.io (core + mcp)
+    name: Publish to crates.io (core + ffi + mcp + cli)
     needs: release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Publish core library
+      - name: Publish crates in canonical order
         shell: bash
         run: |
           set -euo pipefail
-          if ! output="$(cargo publish -p agentic-memory --token "${{ secrets.CARGO_REGISTRY_TOKEN }}" 2>&1)"; then
-            echo "$output"
-            if echo "$output" | grep -Eqi "already uploaded|already exists on crates\\.io index"; then
-              echo "agentic-memory already published for this version; continuing."
-            else
-              exit 1
-            fi
-          else
-            echo "$output"
-          fi
-      - name: Publish MCP server
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in {1..12}; do
-            echo "Publish attempt ${attempt}/12 for agentic-memory-mcp..."
-            if output="$(cargo publish -p agentic-memory-mcp --token "${{ secrets.CARGO_REGISTRY_TOKEN }}" 2>&1)"; then
+
+          publish_crate() {
+            local pkg="$1"
+            local retries="${2:-12}"
+            local attempt
+            local output
+
+            for attempt in $(seq 1 "$retries"); do
+              echo "Publish attempt ${attempt}/${retries} for ${pkg}..."
+              if output="$(cargo publish -p "${pkg}" --token "${{ secrets.CARGO_REGISTRY_TOKEN }}" 2>&1)"; then
+                echo "$output"
+                return 0
+              fi
+
               echo "$output"
-              exit 0
-            fi
-            echo "$output"
-            if echo "$output" | grep -Eqi "already uploaded|already exists on crates\\.io index"; then
-              echo "agentic-memory-mcp already published for this version; continuing."
-              exit 0
-            fi
-            if echo "$output" | grep -qi "failed to select a version for the requirement"; then
-              echo "Core crate version not visible in index yet; waiting before retry..."
-              sleep 20
-              continue
-            fi
-            exit 1
-          done
-          echo "Timed out waiting for crates.io index propagation."
-          exit 1
+              if echo "$output" | grep -Eqi "already uploaded|already exists on crates\\.io index"; then
+                echo "${pkg} already published for this version; continuing."
+                return 0
+              fi
+              if echo "$output" | grep -Eqi "failed to select a version for the requirement|no matching package named|could not find .* in registry"; then
+                echo "Dependency index propagation not ready yet; waiting before retry..."
+                sleep 20
+                continue
+              fi
+              return 1
+            done
+
+            echo "Timed out waiting for crates.io index propagation for ${pkg}."
+            return 1
+          }
+
+          publish_crate "agentic-memory"
+          publish_crate "agentic-memory-ffi"
+          publish_crate "agentic-memory-mcp"
+          publish_crate "agentic-memory-cli"

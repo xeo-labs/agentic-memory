@@ -4,20 +4,26 @@ on:
   push:
     paths:
       - "README.md"
-      - "scripts/install.sh"
-      - "scripts/check-install-commands.sh"
-      - "scripts/check-canonical-sister.sh"
-      - "scripts/check-runtime-hardening.sh"
+      - "INSTALL.md"
+      - "install.sh"
+      - "scripts/**"
       - "docs/**"
+      - "src/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - ".github/workflows/canonical-sister-guardrails.yml"
   pull_request:
     paths:
       - "README.md"
-      - "scripts/install.sh"
-      - "scripts/check-install-commands.sh"
-      - "scripts/check-canonical-sister.sh"
-      - "scripts/check-runtime-hardening.sh"
+      - "INSTALL.md"
+      - "install.sh"
+      - "scripts/**"
       - "docs/**"
+      - "src/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - ".github/workflows/canonical-sister-guardrails.yml"
 
 jobs:

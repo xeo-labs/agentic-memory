@@ -7,6 +7,10 @@ on:
       - "scripts/check-runtime-hardening.sh"
       - "docs/ecosystem/CANONICAL_SISTER_KIT.md"
       - "docs/public/ecosystem/CANONICAL_SISTER_KIT.md"
+      - "src/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - ".github/workflows/runtime-hardening-guardrails.yml"
   pull_request:
     paths:
@@ -14,6 +18,10 @@ on:
       - "scripts/check-runtime-hardening.sh"
       - "docs/ecosystem/CANONICAL_SISTER_KIT.md"
       - "docs/public/ecosystem/CANONICAL_SISTER_KIT.md"
+      - "src/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - ".github/workflows/runtime-hardening-guardrails.yml"
 
 jobs:

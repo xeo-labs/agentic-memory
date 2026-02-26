@@ -4,16 +4,28 @@ on:
   push:
     paths:
       - "README.md"
-      - "docs/**"
+      - "INSTALL.md"
+      - "install.sh"
       - "scripts/install.sh"
       - "scripts/check-install-commands.sh"
+      - "docs/**"
+      - "src/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - ".github/workflows/install-command-guardrails.yml"
   pull_request:
     paths:
       - "README.md"
-      - "docs/**"
+      - "INSTALL.md"
+      - "install.sh"
       - "scripts/install.sh"
       - "scripts/check-install-commands.sh"
+      - "docs/**"
+      - "src/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - ".github/workflows/install-command-guardrails.yml"
 
 jobs:

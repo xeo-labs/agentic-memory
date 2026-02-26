@@ -6,12 +6,20 @@ on:
       - "scripts/test-primary-problems.sh"
       - "docs/public/primary-problem-coverage.md"
       - "docs/public/initial-problem-coverage.md"
+      - "src/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - ".github/workflows/primary-problem-regression.yml"
   pull_request:
     paths:
       - "scripts/test-primary-problems.sh"
       - "docs/public/primary-problem-coverage.md"
       - "docs/public/initial-problem-coverage.md"
+      - "src/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - ".github/workflows/primary-problem-regression.yml"
 
 jobs:

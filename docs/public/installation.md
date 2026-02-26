@@ -74,6 +74,8 @@ print(brain.facts())
 The `amem` binary is the core engine. Use it standalone or as the backend for the Python SDK. Requires **Rust 1.70+**.
 
 ```bash
+cargo install agentic-memory-cli
+cargo install agentic-memory-mcp
 cargo install agentic-memory
 ```
 
