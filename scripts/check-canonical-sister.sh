@@ -351,6 +351,51 @@ PAPER_I_DIR="$(ls -d paper/paper-i-* 2>/dev/null | head -1)"
 ls "$PAPER_I_DIR"/*.tex >/dev/null 2>&1 || fail "Missing .tex file in $PAPER_I_DIR"
 assert_file "$PAPER_I_DIR/references.bib"
 
+# ── 25. Benchmark suite for paper quality ──────────────────────────────────
+# Every sister with a research paper must have a Criterion benchmark suite
+# that produces real measured data. No estimates allowed in papers.
+# SPEC-RESEARCH-PAPER-CANONICAL.md v2.0 mandates: benchmarks BEFORE paper.
+
+BENCH_FOUND=0
+for bench_dir in "crates/agentic-${SISTER_KEY}/benches" "crates/${SISTER_KEY}/benches" "benches"; do
+  if [ -d "$bench_dir" ] && ls "$bench_dir"/*.rs >/dev/null 2>&1; then
+    BENCH_FOUND=1
+    find_fixed "criterion" "$bench_dir" >/dev/null 2>&1 \
+      || find_fixed "Criterion" "$bench_dir" >/dev/null 2>&1 \
+      || fail "Benchmark files in $bench_dir must use Criterion framework"
+    # Minimum benchmark count: at least 5 benchmark functions
+    BENCH_COUNT=$({ grep -rcE 'criterion_group!|fn bench_|\.bench_function|\.bench_with_input|BenchmarkId' "$bench_dir" 2>/dev/null || true; } | awk -F: '{sum+=$NF} END {print sum+0}')
+    [ "$BENCH_COUNT" -ge 5 ] || fail "Benchmark suite needs ≥5 benchmark references (found ${BENCH_COUNT})"
+    break
+  fi
+done
+[ "$BENCH_FOUND" -eq 1 ] || fail "Missing benchmark suite (benches/ directory with Criterion benchmarks required for paper data)"
+
+# ── 26. Stress / edge-case test suite ──────────────────────────────────────
+# Every sister must have stress tests or edge-case tests that cover boundary
+# conditions, heavy loads, and error paths. Without these, the paper's
+# "robustness" claims have no backing.
+
+STRESS_FOUND=0
+for test_dir in "crates/agentic-${SISTER_KEY}/tests" "crates/${SISTER_KEY}/tests" "tests"; do
+  if [ -d "$test_dir" ]; then
+    # Look for files containing stress/edge/boundary test patterns
+    STRESS_HITS=0
+    for keyword in stress edge_ boundary heavy; do
+      hits=$({ find_fixed "$keyword" "$test_dir" 2>/dev/null || true; } | wc -l | tr -d ' ')
+      STRESS_HITS=$((STRESS_HITS + hits))
+    done
+    if [ "$STRESS_HITS" -gt 0 ]; then
+      STRESS_FOUND=1
+      # Count actual test functions in the test directory
+      STRESS_TEST_COUNT=$({ grep -rcE '#\[test\]' "$test_dir" 2>/dev/null || true; } | awk -F: '{sum+=$NF} END {print sum+0}')
+      [ "$STRESS_TEST_COUNT" -ge 10 ] || fail "Stress test suite needs ≥10 test functions (found ${STRESS_TEST_COUNT})"
+      break
+    fi
+  fi
+done
+[ "$STRESS_FOUND" -eq 1 ] || fail "Missing stress/edge-case test suite (tests/ directory with stress or edge-case tests required)"
+
 # ── Done ────────────────────────────────────────────────────────────────────
 
 echo "Canonical sister guardrails passed."
