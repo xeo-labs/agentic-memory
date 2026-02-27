@@ -559,9 +559,7 @@ pub async fn execute_context_navigate(
         .ok_or_else(|| McpError::InvalidParams("to_topic required".into()))?;
     let session = session.lock().await;
     let graph = session.graph();
-    let _ = graph
-        .get_node(from)
-        .ok_or(McpError::NodeNotFound(from))?;
+    let _ = graph.get_node(from).ok_or(McpError::NodeNotFound(from))?;
     // BFS from from_node, scoring by topic relevance
     let mut visited = std::collections::HashSet::new();
     let mut queue = std::collections::VecDeque::new();

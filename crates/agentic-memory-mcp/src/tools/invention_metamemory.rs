@@ -159,12 +159,14 @@ pub async fn execute_meta_gaps(
     let type_index = graph.type_index();
 
     // Check for missing event types
-    let expected_types = ["fact",
+    let expected_types = [
+        "fact",
         "decision",
         "inference",
         "correction",
         "skill",
-        "episode"];
+        "episode",
+    ];
     let present_types: Vec<String> = type_index
         .inner()
         .keys()

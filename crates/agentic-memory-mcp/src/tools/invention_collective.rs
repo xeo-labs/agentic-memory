@@ -144,12 +144,8 @@ pub async fn execute_ancestor_bequeath(
         get_u64(&args, "to_id").ok_or_else(|| McpError::InvalidParams("to_id required".into()))?;
     let session = session.lock().await;
     let graph = session.graph();
-    let parent = graph
-        .get_node(from)
-        .ok_or(McpError::NodeNotFound(from))?;
-    let _ = graph
-        .get_node(to)
-        .ok_or(McpError::NodeNotFound(to))?;
+    let parent = graph.get_node(from).ok_or(McpError::NodeNotFound(from))?;
+    let _ = graph.get_node(to).ok_or(McpError::NodeNotFound(to))?;
     Ok(ToolCallResult::json(
         &json!({"from_id":from,"to_id":to,"bequeathed_confidence":parent.confidence,"bequeathed_edge_count":graph.edges_from(from).len(),"status":"bequeath_analyzed"}),
     ))
