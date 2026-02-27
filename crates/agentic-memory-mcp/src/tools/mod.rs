@@ -26,6 +26,14 @@ pub mod registry;
 pub mod session_end;
 pub mod session_start;
 
+// 24 Inventions — INFINITUS
+pub mod invention_collective; // Inventions 9-12:  Ancestor Memory, Collective Memory, Memory Fusion, Memory Telepathy
+pub mod invention_infinite; // Inventions 1-4:   Immortal Memory, Semantic Compression, Context Optimization, Memory Metabolism
+pub mod invention_metamemory; // Inventions 17-20: Self-Awareness, Memory Dreams, Belief Revision, Cognitive Load Balancing
+pub mod invention_prophetic; // Inventions 5-8:   Predictive Memory, Memory Prophecy, Counterfactual Memory, Déjà Vu Detection
+pub mod invention_resurrection; // Inventions 13-16: Memory Archaeology, Holographic Memory, Memory Immune System, Phoenix Protocol
+pub mod invention_transcendent; // Inventions 21-24: Memory Singularity, Temporal Omniscience, Consciousness Crystal, Memory Transcendence
+
 #[cfg(feature = "v3")]
 pub mod v3_tools;
 

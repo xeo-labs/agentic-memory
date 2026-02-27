@@ -75,6 +75,13 @@ docs/REPO_HYGIENE.md
 /agent/scripts/
 /installer/scripts/
 
+# Internal docs (not for public repo)
+docs/internal/
+ECOSYSTEM-CONVENTIONS.md
+
+# Local goals (internal only)
+goals/
+
 # Environment
 .env
 .env.local
