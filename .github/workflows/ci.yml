@@ -19,8 +19,8 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      - name: Clone agentic-contracts (sibling dependency)
-        run: git clone --depth 1 https://github.com/agentralabs/agentic-contracts.git ../agentic-contracts
+      - name: Clone agentic-sdk (sibling dependency)
+        run: git clone --depth 1 https://github.com/agentralabs/agentic-sdk.git ../agentic-sdk
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -47,8 +47,8 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
-      - name: Clone agentic-contracts (sibling dependency)
-        run: git clone --depth 1 https://github.com/agentralabs/agentic-contracts.git ../agentic-contracts
+      - name: Clone agentic-sdk (sibling dependency)
+        run: git clone --depth 1 https://github.com/agentralabs/agentic-sdk.git ../agentic-sdk
 
       - name: Install Rust (for amem binary)
         uses: dtolnay/rust-toolchain@stable
@@ -101,8 +101,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Clone agentic-contracts (sibling dependency)
-        run: git clone --depth 1 https://github.com/agentralabs/agentic-contracts.git ../agentic-contracts
+      - name: Clone agentic-sdk (sibling dependency)
+        run: git clone --depth 1 https://github.com/agentralabs/agentic-sdk.git ../agentic-sdk
       - name: Install command guardrails
         run: bash scripts/check-install-commands.sh
       - name: Canonical sister guardrails

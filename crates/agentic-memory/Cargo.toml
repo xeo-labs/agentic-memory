@@ -28,8 +28,8 @@ v3 = []
 encryption = ["dep:chacha20poly1305", "dep:argon2"]
 
 [dependencies]
-# Contracts (shared sister traits)
-agentic-contracts = { workspace = true }
+# SDK (shared sister traits)
+agentic-sdk = { workspace = true }
 
 # Compression (optional — needed only for .amem file I/O)
 lz4_flex = { version = "0.11", optional = true }

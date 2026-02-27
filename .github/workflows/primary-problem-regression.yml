@@ -27,8 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Clone agentic-contracts (sibling dependency)
-        run: git clone --depth 1 https://github.com/agentralabs/agentic-contracts.git ../agentic-contracts
+      - name: Clone agentic-sdk (sibling dependency)
+        run: git clone --depth 1 https://github.com/agentralabs/agentic-sdk.git ../agentic-sdk
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Run primary-problem regression

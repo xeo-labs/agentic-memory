@@ -1,4 +1,4 @@
-//! Contracts bridge — implements agentic-contracts v0.2.0 traits for Memory.
+//! Contracts bridge — implements agentic-sdk v0.2.0 traits for Memory.
 //!
 //! This module provides `MemorySister`, a contracts-compliant wrapper
 //! around the core `MemoryGraph` + engines. It implements:
@@ -12,7 +12,7 @@
 //! The MCP server can use `MemorySister` instead of raw graph + engines
 //! to get compile-time contracts compliance.
 
-use agentic_contracts::prelude::*;
+use agentic_sdk::prelude::*;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

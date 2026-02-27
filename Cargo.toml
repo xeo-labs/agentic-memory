@@ -27,8 +27,8 @@ chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tempfile = "3"
 
-# Contracts (shared traits for all sisters)
-agentic-contracts = { version = "0.2.0", path = "../agentic-contracts" }
+# SDK (shared traits for all sisters)
+agentic-sdk = { version = "0.2.0", path = "../agentic-sdk" }
 
 # Internal crates
 agentic-memory = { path = "crates/agentic-memory" }
