@@ -250,7 +250,7 @@ pub async fn execute_prophecy_similar(
     let graph = session.graph();
     let target = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let t_edges = graph.edges_from(node_id).len();
     let similar: Vec<Value> = graph.nodes().iter().filter(|n| n.id != node_id).map(|n| {
         let conf_diff = (n.confidence - target.confidence).abs();
@@ -287,7 +287,7 @@ pub async fn execute_prophecy_regret(
     let nodes = graph.nodes();
     let regrets: Vec<Value> = nodes.iter().filter(|n| {
         n.decay_score > 0.7 && n.confidence > 0.5 && graph.edges_from(n.id).len() > 2
-        && filter_session.map_or(true, |s| n.session_id == s)
+        && filter_session.is_none_or(|s| n.session_id == s)
     }).take(15).map(|n| json!({"id":n.id,"content":&n.content[..n.content.len().min(80)],"confidence":n.confidence,"decay":n.decay_score,"edge_count":graph.edges_from(n.id).len(),"regret_reason":"high-value memory decaying without reinforcement"})).collect();
     Ok(ToolCallResult::json(
         &json!({"regrets_count":regrets.len(),"regrets":regrets}),
@@ -312,7 +312,7 @@ pub async fn execute_prophecy_track(
     let graph = session.graph();
     let node = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let trajectory = json!({"confidence_trend": if node.access_count > 3 { "strengthening" } else if node.decay_score > 0.5 { "weakening" } else { "stable" },
         "current_confidence":node.confidence,"current_decay":node.decay_score,"access_count":node.access_count,
         "edge_count":graph.edges_from(node_id).len()+graph.edges_to(node_id).len()});
@@ -341,7 +341,7 @@ pub async fn execute_counterfactual_what_if(
     let graph = session.graph();
     let node = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let affected: Vec<Value> = graph.edges_from(node_id).iter().filter_map(|e| graph.get_node(e.target_id).map(|n| {
         let original_overlap = word_overlap(&node.content, &n.content);
         let alt_overlap = word_overlap(&alt, &n.content);
@@ -371,7 +371,7 @@ pub async fn execute_counterfactual_compare(
     let graph = session.graph();
     let _ = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let downstream: Vec<&str> = graph
         .edges_from(node_id)
         .iter()
@@ -403,7 +403,7 @@ pub async fn execute_counterfactual_insights(
     let graph = session.graph();
     let node = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let dependents = graph.edges_from(node_id).len();
     let supporters = graph.edges_to(node_id).len();
     let criticality =
@@ -443,7 +443,7 @@ pub async fn execute_counterfactual_best(
     let graph = session.graph();
     let _ = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let downstream: Vec<&str> = graph
         .edges_from(node_id)
         .iter()
@@ -594,7 +594,7 @@ pub async fn execute_dejavu_feedback(
     let _ = session
         .graph()
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     Ok(ToolCallResult::json(
         &json!({"node_id":node_id,"was_true_dejavu":was_true,"feedback_recorded":true}),
     ))

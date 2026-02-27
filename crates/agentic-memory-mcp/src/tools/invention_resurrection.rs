@@ -171,7 +171,7 @@ pub async fn execute_archaeology_artifacts(
     let graph = session.graph();
     let _center = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
 
     let mut artifacts = Vec::new();
     let mut visited = std::collections::HashSet::new();
@@ -333,7 +333,7 @@ pub async fn execute_archaeology_verify(
     let graph = session.graph();
     let node = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
 
     let edges_out = graph.edges_from(node_id);
     let edges_in = graph.edges_to(node_id);
@@ -468,7 +468,7 @@ pub async fn execute_holographic_reconstruct(
     let graph = session.graph();
     let node = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
 
     // Gather shards: all connected nodes
     let mut shards: Vec<Value> = Vec::new();
@@ -782,7 +782,7 @@ pub async fn execute_immune_quarantine(
     let graph = session.graph_mut();
     let node = graph
         .get_node_mut(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let old_confidence = node.confidence;
     node.confidence = 0.0;
     Ok(ToolCallResult::json(&json!({
@@ -815,7 +815,7 @@ pub async fn execute_immune_release(
     let graph = session.graph_mut();
     let node = graph
         .get_node_mut(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let old_confidence = node.confidence;
     node.confidence = confidence.clamp(0.0, 1.0);
     Ok(ToolCallResult::json(&json!({

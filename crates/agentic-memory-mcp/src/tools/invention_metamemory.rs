@@ -159,14 +159,12 @@ pub async fn execute_meta_gaps(
     let type_index = graph.type_index();
 
     // Check for missing event types
-    let expected_types = vec![
-        "fact",
+    let expected_types = ["fact",
         "decision",
         "inference",
         "correction",
         "skill",
-        "episode",
-    ];
+        "episode"];
     let present_types: Vec<String> = type_index
         .inner()
         .keys()
@@ -854,7 +852,7 @@ pub async fn execute_belief_revise(
     let _old = session
         .graph()
         .get_node(old_id)
-        .ok_or_else(|| McpError::NodeNotFound(old_id))?;
+        .ok_or(McpError::NodeNotFound(old_id))?;
 
     let content = format!("{} [revised: {}]", new_content, reason);
     let edges = vec![(old_id, EdgeType::Supersedes, 1.0f32)];

@@ -85,10 +85,10 @@ pub async fn execute_ancestor_inherit(
     let graph = session.graph();
     let ancestor = graph
         .get_node(ancestor_id)
-        .ok_or_else(|| McpError::NodeNotFound(ancestor_id))?;
+        .ok_or(McpError::NodeNotFound(ancestor_id))?;
     let _ = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let inherited_edges = graph.edges_from(ancestor_id).len();
     let ancestor_confidence = ancestor.confidence;
     Ok(ToolCallResult::json(
@@ -114,7 +114,7 @@ pub async fn execute_ancestor_verify(
     let graph = session.graph();
     let node = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let incoming = graph.edges_to(node_id);
     let has_lineage = incoming
         .iter()
@@ -146,10 +146,10 @@ pub async fn execute_ancestor_bequeath(
     let graph = session.graph();
     let parent = graph
         .get_node(from)
-        .ok_or_else(|| McpError::NodeNotFound(from))?;
+        .ok_or(McpError::NodeNotFound(from))?;
     let _ = graph
         .get_node(to)
-        .ok_or_else(|| McpError::NodeNotFound(to))?;
+        .ok_or(McpError::NodeNotFound(to))?;
     Ok(ToolCallResult::json(
         &json!({"from_id":from,"to_id":to,"bequeathed_confidence":parent.confidence,"bequeathed_edge_count":graph.edges_from(from).len(),"status":"bequeath_analyzed"}),
     ))
@@ -193,7 +193,7 @@ pub async fn execute_collective_contribute(
     let node = session
         .graph()
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     Ok(ToolCallResult::json(
         &json!({"node_id":node_id,"pool_name":pool,"content":&node.content[..node.content.len().min(80)],"contributed":true}),
     ))
@@ -240,7 +240,7 @@ pub async fn execute_collective_endorse(
     let node = session
         .graph_mut()
         .get_node_mut(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     node.confidence = (node.confidence + 0.05).min(1.0);
     node.access_count += 1;
     Ok(ToolCallResult::json(
@@ -267,7 +267,7 @@ pub async fn execute_collective_challenge(
     let node = session
         .graph()
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     Ok(ToolCallResult::json(
         &json!({"node_id":node_id,"content":&node.content[..node.content.len().min(80)],"challenge_reason":reason,"challenged":true}),
     ))
@@ -330,8 +330,8 @@ pub async fn execute_fusion_execute(
         .ok_or_else(|| McpError::InvalidParams("node_b required".into()))?;
     let session = session.lock().await;
     let graph = session.graph();
-    let na = graph.get_node(a).ok_or_else(|| McpError::NodeNotFound(a))?;
-    let nb = graph.get_node(b).ok_or_else(|| McpError::NodeNotFound(b))?;
+    let na = graph.get_node(a).ok_or(McpError::NodeNotFound(a))?;
+    let nb = graph.get_node(b).ok_or(McpError::NodeNotFound(b))?;
     let fused_confidence = (na.confidence + nb.confidence) / 2.0;
     let sim = word_overlap(&na.content, &nb.content);
     Ok(ToolCallResult::json(
@@ -357,8 +357,8 @@ pub async fn execute_fusion_resolve(
     let strategy = get_str(&args, "strategy").unwrap_or_else(|| "highest_confidence".into());
     let session = session.lock().await;
     let graph = session.graph();
-    let na = graph.get_node(a).ok_or_else(|| McpError::NodeNotFound(a))?;
-    let nb = graph.get_node(b).ok_or_else(|| McpError::NodeNotFound(b))?;
+    let na = graph.get_node(a).ok_or(McpError::NodeNotFound(a))?;
+    let nb = graph.get_node(b).ok_or(McpError::NodeNotFound(b))?;
     let winner = match strategy.as_str() {
         "keep_a" => a,
         "keep_b" => b,
@@ -392,8 +392,8 @@ pub async fn execute_fusion_preview(
         .ok_or_else(|| McpError::InvalidParams("node_b required".into()))?;
     let session = session.lock().await;
     let graph = session.graph();
-    let na = graph.get_node(a).ok_or_else(|| McpError::NodeNotFound(a))?;
-    let nb = graph.get_node(b).ok_or_else(|| McpError::NodeNotFound(b))?;
+    let na = graph.get_node(a).ok_or(McpError::NodeNotFound(a))?;
+    let nb = graph.get_node(b).ok_or(McpError::NodeNotFound(b))?;
     let combined_edges = graph.edges_from(a).len() + graph.edges_from(b).len();
     Ok(ToolCallResult::json(
         &json!({"node_a":{"id":a,"content":&na.content[..na.content.len().min(60)],"confidence":na.confidence},
@@ -488,7 +488,7 @@ pub async fn execute_telepathy_stream(
     let pending: Vec<u64> = graph
         .nodes()
         .iter()
-        .filter(|n| since.map_or(true, |s| n.session_id >= s))
+        .filter(|n| since.is_none_or(|s| n.session_id >= s))
         .map(|n| n.id)
         .collect();
     Ok(ToolCallResult::json(

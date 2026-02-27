@@ -111,7 +111,7 @@ pub async fn execute_immortal_prove(
     let graph = session.graph();
     let node = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let outgoing: Vec<Value> = graph
         .edges_from(node_id)
         .iter()
@@ -155,7 +155,7 @@ pub async fn execute_immortal_project(
     let graph = session.graph();
     let node = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let support_edges = graph.edges_to(node_id).len() + graph.edges_from(node_id).len();
     let survival_base = node.confidence as f64 * (1.0 - node.decay_score as f64);
     let connection_bonus = (support_edges as f64 * 0.05).min(0.3);
@@ -194,7 +194,7 @@ pub async fn execute_immortal_tier_move(
     let graph = session.graph_mut();
     let node = graph
         .get_node_mut(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let old_decay = node.decay_score;
     match tier.as_str() {
         "hot" => {
@@ -468,7 +468,7 @@ pub async fn execute_context_expand(
     let graph = session.graph();
     let _ = graph
         .get_node(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let mut visited: std::collections::HashSet<u64> = std::collections::HashSet::new();
     let mut frontier = vec![node_id];
     visited.insert(node_id);
@@ -561,7 +561,7 @@ pub async fn execute_context_navigate(
     let graph = session.graph();
     let _ = graph
         .get_node(from)
-        .ok_or_else(|| McpError::NodeNotFound(from))?;
+        .ok_or(McpError::NodeNotFound(from))?;
     // BFS from from_node, scoring by topic relevance
     let mut visited = std::collections::HashSet::new();
     let mut queue = std::collections::VecDeque::new();
@@ -690,7 +690,7 @@ pub async fn execute_metabolism_strengthen(
     let graph = session.graph_mut();
     let node = graph
         .get_node_mut(node_id)
-        .ok_or_else(|| McpError::NodeNotFound(node_id))?;
+        .ok_or(McpError::NodeNotFound(node_id))?;
     let old_conf = node.confidence;
     let old_decay = node.decay_score;
     node.confidence = (node.confidence + boost).min(1.0);
