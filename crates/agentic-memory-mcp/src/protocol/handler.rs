@@ -234,8 +234,13 @@ impl ProtocolHandler {
             }
         }
 
-        let result =
-            ToolRegistry::call(&call_params.name, call_params.arguments, &self.session).await?;
+        // Classify errors: protocol errors (ToolNotFound etc.) become JSON-RPC errors;
+        // tool execution errors (NodeNotFound, InvalidGraphOp, etc.) become isError: true.
+        let result = match ToolRegistry::call(&call_params.name, call_params.arguments, &self.session).await {
+            Ok(r) => r,
+            Err(e) if e.is_protocol_error() => return Err(e),
+            Err(e) => ToolCallResult::error(e.to_string()),
+        };
 
         serde_json::to_value(result).map_err(|e| McpError::InternalError(e.to_string()))
     }
