@@ -4,7 +4,7 @@ status: stable
 
 # MCP Tools
 
-AgenticMemory exposes 25 core tools through the MCP protocol via `agentic-memory-mcp`. Additional invention tools (~100) extend the core set with advanced capabilities.
+AgenticMemory exposes 25 core tools through the MCP protocol via `agentic-memory-mcp`. Additional advanced tools (~100) extend the core set with advanced capabilities.
 
 ## Conversation Tools
 
