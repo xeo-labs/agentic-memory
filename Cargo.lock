@@ -13,26 +13,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "agentic-contracts"
-version = "0.2.0"
-dependencies = [
- "base64",
- "blake3",
- "chrono",
- "hex",
- "semver",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "uuid",
-]
-
-[[package]]
 name = "agentic-memory"
 version = "0.4.2"
 dependencies = [
- "agentic-contracts",
+ "agentic-sdk",
  "argon2",
  "base64",
  "blake3",
@@ -113,6 +97,22 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "agentic-sdk"
+version = "0.2.0"
+dependencies = [
+ "base64",
+ "blake3",
+ "chrono",
+ "hex",
+ "semver",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
  "uuid",
 ]
 
