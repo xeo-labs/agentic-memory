@@ -5,6 +5,7 @@
 
 #[cfg(feature = "cli")]
 pub mod cli;
+pub mod bridges;
 pub mod contracts;
 pub mod engine;
 #[cfg(feature = "ffi")]
