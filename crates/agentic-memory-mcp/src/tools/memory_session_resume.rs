@@ -34,7 +34,7 @@ pub fn definition() -> ToolDefinition {
         description: Some(
             "Load context from previous sessions. Call this at the start of every \
              conversation to restore prior context. Returns the last session summary, \
-             recent decisions, and key facts."
+             recent decisions, and key facts"
                 .to_string(),
         ),
         input_schema: json!({

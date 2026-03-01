@@ -27,7 +27,7 @@ pub fn definition() -> ToolDefinition {
         name: "memory_workspace_compare".to_string(),
         description: Some(
             "Compare how a topic appears across different memory contexts. Shows where \
-             a concept exists, what's different, and where it's missing."
+             a concept exists, what's different, and where it's missing"
                 .to_string(),
         ),
         input_schema: json!({

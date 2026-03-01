@@ -21,7 +21,7 @@ pub fn definition() -> ToolDefinition {
         name: "memory_workspace_xref".to_string(),
         description: Some(
             "Cross-reference a topic to find which memory contexts contain it and \
-             which don't. Quick way to identify knowledge gaps across projects."
+             which don't. Quick way to identify knowledge gaps across projects"
                 .to_string(),
         ),
         input_schema: json!({

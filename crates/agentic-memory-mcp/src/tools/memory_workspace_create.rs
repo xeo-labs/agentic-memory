@@ -20,7 +20,7 @@ pub fn definition() -> ToolDefinition {
         name: "memory_workspace_create".to_string(),
         description: Some(
             "Create a multi-memory workspace for loading and querying multiple .amem files \
-             simultaneously. Use this to compare memories across projects or time periods."
+             simultaneously. Use this to compare memories across projects or time periods"
                 .to_string(),
         ),
         input_schema: json!({

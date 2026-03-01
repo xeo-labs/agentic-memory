@@ -29,7 +29,7 @@ pub fn definition() -> ToolDefinition {
         name: "memory_workspace_add".to_string(),
         description: Some(
             "Add an .amem memory file to a workspace. Each file becomes a context \
-             that can be queried alongside other loaded memories."
+             that can be queried alongside other loaded memories"
                 .to_string(),
         ),
         input_schema: json!({

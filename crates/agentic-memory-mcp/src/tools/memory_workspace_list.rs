@@ -20,7 +20,7 @@ pub fn definition() -> ToolDefinition {
         name: "memory_workspace_list".to_string(),
         description: Some(
             "List all loaded memory contexts in a workspace, including their roles, \
-             paths, labels, and node counts."
+             paths, labels, and node counts"
                 .to_string(),
         ),
         input_schema: json!({

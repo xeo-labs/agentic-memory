@@ -27,7 +27,7 @@ pub fn definition() -> ToolDefinition {
         name: "memory_workspace_query".to_string(),
         description: Some(
             "Search across all memory contexts in a workspace. Returns matches from \
-             each loaded context, enabling cross-project knowledge discovery."
+             each loaded context, enabling cross-project knowledge discovery"
                 .to_string(),
         ),
         input_schema: json!({

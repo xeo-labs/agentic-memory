@@ -28,7 +28,7 @@ pub fn definition() -> ToolDefinition {
         name: "memory_evidence".to_string(),
         description: Some(
             "Get detailed evidence for a claim from stored memories. Returns matching \
-             memory nodes with full content, timestamps, sessions, and relationships."
+             memory nodes with full content, timestamps, sessions, and relationships"
                 .to_string(),
         ),
         input_schema: json!({

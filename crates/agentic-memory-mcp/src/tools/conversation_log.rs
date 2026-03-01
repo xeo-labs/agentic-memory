@@ -28,7 +28,7 @@ pub fn definition() -> ToolDefinition {
         description: Some(
             "Log a user prompt and/or agent response into the conversation thread. \
              Call this to record what the user said and what you decided to do. \
-             Entries are automatically linked into the session's temporal chain."
+             Entries are automatically linked into the session's temporal chain"
                 .to_string(),
         ),
         input_schema: json!({

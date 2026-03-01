@@ -28,7 +28,7 @@ pub fn definition() -> ToolDefinition {
     ToolDefinition {
         name: "memory_correct".to_string(),
         description: Some(
-            "Record a correction to a previous belief. Creates a new node that supersedes the old one."
+            "Record a correction to a previous belief, creating a new node that supersedes the old one"
                 .to_string(),
         ),
         input_schema: json!({

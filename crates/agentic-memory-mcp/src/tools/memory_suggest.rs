@@ -28,7 +28,7 @@ pub fn definition() -> ToolDefinition {
         name: "memory_suggest".to_string(),
         description: Some(
             "Find similar memories when a claim doesn't match exactly. Useful for \
-             correcting misremembered facts or finding related knowledge."
+             correcting misremembered facts or finding related knowledge"
                 .to_string(),
         ),
         input_schema: json!({

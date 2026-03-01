@@ -28,7 +28,7 @@ pub fn definition() -> ToolDefinition {
         name: "memory_ground".to_string(),
         description: Some(
             "Verify a claim has memory backing. Returns verified/partial/ungrounded status \
-             to prevent hallucination about what was previously remembered."
+             to prevent hallucination about what was previously remembered"
                 .to_string(),
         ),
         input_schema: json!({
