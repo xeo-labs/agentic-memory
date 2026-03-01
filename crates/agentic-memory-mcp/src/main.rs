@@ -2,13 +2,13 @@
 
 use std::collections::BTreeSet;
 use std::fs::OpenOptions;
-use std::io::Write;
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -22,6 +22,8 @@ use agentic_memory_mcp::transport::capture::{
 };
 use agentic_memory_mcp::transport::StdioTransport;
 use agentic_memory_mcp::types::MemoryMode;
+
+mod daemon;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct ClientIdentity {
@@ -52,7 +54,7 @@ struct Layer2Record {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-struct DaemonState {
+struct DaemonCheckpoint {
     last_sequence: Option<u64>,
     processed_records: u64,
     updated_at: String,
@@ -221,22 +223,6 @@ fn print_replay_line(record: &Layer2Record) {
     );
 }
 
-fn load_daemon_state(path: &Path) -> anyhow::Result<DaemonState> {
-    if !path.exists() {
-        return Ok(DaemonState::default());
-    }
-    let raw = std::fs::read_to_string(path)?;
-    Ok(serde_json::from_str::<DaemonState>(&raw).unwrap_or_default())
-}
-
-fn save_daemon_state(path: &Path, state: &DaemonState) -> anyhow::Result<()> {
-    let tmp = path.with_extension("tmp");
-    let payload = serde_json::to_vec_pretty(state)?;
-    std::fs::write(&tmp, payload)?;
-    std::fs::rename(tmp, path)?;
-    Ok(())
-}
-
 fn append_jsonl(path: &Path, records: &[Layer2Record]) -> anyhow::Result<()> {
     if records.is_empty() {
         return Ok(());
@@ -251,6 +237,427 @@ fn append_jsonl(path: &Path, records: &[Layer2Record]) -> anyhow::Result<()> {
         writer.write_all(b"\n")?;
     }
     writer.flush()?;
+    Ok(())
+}
+
+fn load_checkpoint(path: &Path) -> anyhow::Result<DaemonCheckpoint> {
+    if !path.exists() {
+        return Ok(DaemonCheckpoint::default());
+    }
+    let raw = std::fs::read_to_string(path)?;
+    Ok(serde_json::from_str::<DaemonCheckpoint>(&raw).unwrap_or_default())
+}
+
+fn save_checkpoint(path: &Path, state: &DaemonCheckpoint) -> anyhow::Result<()> {
+    let tmp = path.with_extension("tmp");
+    let payload = serde_json::to_vec_pretty(state)?;
+    std::fs::write(&tmp, payload)?;
+    std::fs::rename(tmp, path)?;
+    Ok(())
+}
+
+#[derive(Debug, Clone, Args, Default)]
+struct DaemonRunArgs {
+    /// Path to transport.wal (defaults to AMEM transport wal path).
+    #[arg(long)]
+    wal: Option<PathBuf>,
+    /// Output JSONL file path.
+    #[arg(long)]
+    out: Option<PathBuf>,
+    /// State file path for resume checkpoints.
+    #[arg(long)]
+    state: Option<PathBuf>,
+    /// Poll interval in seconds.
+    #[arg(long, default_value = "2")]
+    poll_secs: u64,
+    /// Include raw JSON payload in extracted records.
+    #[arg(long)]
+    include_raw: bool,
+}
+
+#[derive(Debug, Clone, Subcommand)]
+enum DaemonSubcommand {
+    /// Start daemon process (background by default).
+    Start {
+        /// Run in foreground.
+        #[arg(long)]
+        foreground: bool,
+        #[command(flatten)]
+        args: DaemonRunArgs,
+    },
+    /// Stop daemon process.
+    Stop,
+    /// Show daemon status.
+    Status,
+    /// Restart daemon process.
+    Restart {
+        /// Run in foreground after restart.
+        #[arg(long)]
+        foreground: bool,
+        #[command(flatten)]
+        args: DaemonRunArgs,
+    },
+    /// Show daemon logs.
+    Logs {
+        /// Number of lines to show.
+        #[arg(short = 'n', long, default_value = "50")]
+        lines: usize,
+        /// Follow log output.
+        #[arg(short = 'f', long)]
+        follow: bool,
+    },
+    /// Install daemon as system service.
+    Install,
+    /// Uninstall daemon system service.
+    Uninstall,
+    /// Internal command used by background spawn and services.
+    Run {
+        #[command(flatten)]
+        args: DaemonRunArgs,
+    },
+}
+
+fn resolve_daemon_paths(args: &DaemonRunArgs) -> (PathBuf, PathBuf, PathBuf, daemon::DaemonPaths) {
+    let paths = daemon::DaemonPaths::default();
+    let wal_path = args.wal.clone().unwrap_or_else(capture::default_wal_path);
+    let out_path = args.out.clone().unwrap_or_else(|| {
+        wal_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join("layer2-extraction.jsonl")
+    });
+    let state_path = args
+        .state
+        .clone()
+        .unwrap_or_else(|| out_path.with_extension("state.json"));
+    (wal_path, out_path, state_path, paths)
+}
+
+fn daemon_state_label(state: daemon::DaemonRunState) -> &'static str {
+    match state {
+        daemon::DaemonRunState::Starting => "starting",
+        daemon::DaemonRunState::Running => "running",
+        daemon::DaemonRunState::Extracting => "extracting",
+        daemon::DaemonRunState::Idle => "idle",
+        daemon::DaemonRunState::Stopping => "stopping",
+        daemon::DaemonRunState::Error => "error",
+    }
+}
+
+fn append_daemon_log(path: &Path, message: impl AsRef<str>) {
+    let line = format!(
+        "{} {}",
+        chrono::Utc::now().to_rfc3339(),
+        message.as_ref().trim_end()
+    );
+    let _ = daemon::append_log_line(path, &line);
+}
+
+fn stop_daemon(paths: &daemon::DaemonPaths) -> anyhow::Result<bool> {
+    let pid = daemon::read_pid_file(&paths.pid_file).or_else(|| {
+        daemon::DaemonStatus::load(&paths.status_file)
+            .ok()
+            .flatten()
+            .map(|s| s.pid)
+    });
+    let Some(pid) = pid else {
+        return Ok(false);
+    };
+
+    if let Ok(Some(mut status)) = daemon::DaemonStatus::load(&paths.status_file) {
+        status.state = daemon::DaemonRunState::Stopping;
+        status.touch();
+        let _ = status.save(&paths.status_file);
+    }
+
+    if !daemon::process_alive(pid) {
+        let _ = daemon::remove_pid_file(&paths.pid_file);
+        return Ok(false);
+    }
+
+    let stopped = daemon::stop_process(pid)?;
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while Instant::now() < deadline {
+        if !daemon::process_alive(pid) {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+
+    let _ = daemon::remove_pid_file(&paths.pid_file);
+    Ok(stopped)
+}
+
+fn show_daemon_status(paths: &daemon::DaemonPaths) -> anyhow::Result<()> {
+    let status = daemon::DaemonStatus::load(&paths.status_file)?;
+    println!("Daemon Status");
+    println!("═════════════");
+    match status {
+        Some(status) => {
+            let pid_alive = daemon::process_alive(status.pid);
+            let activity_alive = status.is_alive();
+            let running = pid_alive && activity_alive;
+            let state = if running {
+                daemon_state_label(status.state)
+            } else {
+                "dead"
+            };
+            println!("State:             {state}");
+            println!("PID:               {}", status.pid);
+            println!("Uptime:            {}s", status.uptime_secs());
+            println!("WAL files:         {}", status.wal_files_count);
+            println!("Entries extracted: {}", status.entries_extracted);
+            println!("Memories written:  {}", status.memories_written);
+            if let Some(last) = status.last_sequence {
+                println!("Last sequence:     {last}");
+            }
+            if let Some(err) = status.last_error {
+                println!("Last error:        {err}");
+            }
+            if !running {
+                println!("Activity:          stale");
+            }
+        }
+        None => {
+            println!("State:             not running");
+        }
+    }
+
+    println!();
+    println!("Service Installation");
+    println!("════════════════════");
+    println!(
+        "installed: {}",
+        if daemon::is_service_installed() {
+            "yes"
+        } else {
+            "no"
+        }
+    );
+    println!("status file: {}", paths.status_file.display());
+    println!("pid file:    {}", paths.pid_file.display());
+    println!("log file:    {}", paths.log_file.display());
+    Ok(())
+}
+
+fn show_daemon_logs(paths: &daemon::DaemonPaths, lines: usize, follow: bool) -> anyhow::Result<()> {
+    let tail = daemon::read_last_lines(&paths.log_file, lines)?;
+    for line in tail {
+        println!("{line}");
+    }
+    if !follow {
+        return Ok(());
+    }
+
+    let mut cursor = std::fs::metadata(&paths.log_file)
+        .map(|m| m.len())
+        .unwrap_or(0);
+    loop {
+        std::thread::sleep(Duration::from_secs(1));
+        let len = std::fs::metadata(&paths.log_file)
+            .map(|m| m.len())
+            .unwrap_or(0);
+        if len < cursor {
+            cursor = 0;
+        }
+        if len == cursor {
+            continue;
+        }
+        let mut file = match std::fs::File::open(&paths.log_file) {
+            Ok(file) => file,
+            Err(_) => continue,
+        };
+        file.seek(SeekFrom::Start(cursor))?;
+        let mut buf = String::new();
+        file.read_to_string(&mut buf)?;
+        if !buf.is_empty() {
+            print!("{buf}");
+            std::io::stdout().flush()?;
+        }
+        cursor = len;
+    }
+}
+
+fn push_daemon_run_args(cmd: &mut std::process::Command, args: &DaemonRunArgs) {
+    if let Some(wal) = &args.wal {
+        cmd.arg("--wal").arg(wal);
+    }
+    if let Some(out) = &args.out {
+        cmd.arg("--out").arg(out);
+    }
+    if let Some(state) = &args.state {
+        cmd.arg("--state").arg(state);
+    }
+    if args.poll_secs != 2 {
+        cmd.arg("--poll-secs").arg(args.poll_secs.to_string());
+    }
+    if args.include_raw {
+        cmd.arg("--include-raw");
+    }
+}
+
+fn start_daemon_background(args: &DaemonRunArgs) -> anyhow::Result<()> {
+    let (_, _, _, paths) = resolve_daemon_paths(args);
+    paths.ensure_dirs()?;
+    if let Some(pid) = daemon::read_pid_file(&paths.pid_file) {
+        if daemon::process_alive(pid) {
+            println!("Daemon already running (pid={pid})");
+            return Ok(());
+        }
+    }
+
+    let exe = std::env::current_exe()?;
+    let mut cmd = std::process::Command::new(&exe);
+    cmd.arg("daemon").arg("run");
+    push_daemon_run_args(&mut cmd, args);
+    cmd.env("AMEM_DAEMON_MODE", "1")
+        .stdin(std::process::Stdio::null());
+
+    let stdout = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&paths.log_file)?;
+    let stderr = stdout.try_clone()?;
+    cmd.stdout(stdout).stderr(stderr);
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        cmd.process_group(0);
+    }
+
+    let child = cmd.spawn()?;
+    println!("Daemon started (pid={})", child.id());
+    Ok(())
+}
+
+async fn run_daemon_loop(args: DaemonRunArgs) -> anyhow::Result<()> {
+    let (wal_path, out_path, state_path, paths) = resolve_daemon_paths(&args);
+    paths.ensure_dirs()?;
+
+    if let Some(pid) = daemon::read_pid_file(&paths.pid_file) {
+        if pid != std::process::id() && daemon::process_alive(pid) {
+            anyhow::bail!("daemon already running (pid={pid})");
+        }
+    }
+
+    let mut checkpoint = load_checkpoint(&state_path)?;
+    let mut status = daemon::DaemonStatus::new();
+    status.state = daemon::DaemonRunState::Running;
+    status.last_sequence = checkpoint.last_sequence;
+    status.wal_files_count = usize::from(wal_path.exists());
+    status.save(&paths.status_file)?;
+    daemon::write_pid_file(&paths.pid_file, std::process::id())?;
+
+    append_daemon_log(
+        &paths.log_file,
+        format!(
+            "daemon started (wal={}, out={})",
+            wal_path.display(),
+            out_path.display()
+        ),
+    );
+
+    #[cfg(unix)]
+    let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+    #[cfg(unix)]
+    let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
+
+    let mut interval = tokio::time::interval(Duration::from_secs(args.poll_secs.max(1)));
+    interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+    let process_tick = |status: &mut daemon::DaemonStatus,
+                        checkpoint: &mut DaemonCheckpoint|
+     -> anyhow::Result<()> {
+        status.state = daemon::DaemonRunState::Extracting;
+        status.wal_files_count = usize::from(wal_path.exists());
+        status.touch();
+
+        let entries = capture::read_entries(&wal_path, None)?;
+        let records = extract_layer2_records(&entries, args.include_raw);
+        let new_records: Vec<Layer2Record> = records
+            .into_iter()
+            .filter(|r| {
+                checkpoint
+                    .last_sequence
+                    .map(|seq| r.sequence > seq)
+                    .unwrap_or(true)
+            })
+            .collect();
+
+        if !new_records.is_empty() {
+            append_jsonl(&out_path, &new_records)?;
+            checkpoint.last_sequence = new_records.last().map(|r| r.sequence);
+            checkpoint.processed_records = checkpoint
+                .processed_records
+                .saturating_add(new_records.len() as u64);
+            checkpoint.updated_at = chrono::Utc::now().to_rfc3339();
+            save_checkpoint(&state_path, checkpoint)?;
+
+            status.record_extraction(new_records.len() as u64, new_records.len() as u64);
+            status.last_sequence = checkpoint.last_sequence;
+            status.clear_error();
+            append_daemon_log(
+                &paths.log_file,
+                format!(
+                    "extracted {} records (last_seq={})",
+                    new_records.len(),
+                    status.last_sequence.unwrap_or(0)
+                ),
+            );
+        } else {
+            status.state = daemon::DaemonRunState::Idle;
+            status.touch();
+        }
+        status.save(&paths.status_file)?;
+        Ok(())
+    };
+
+    process_tick(&mut status, &mut checkpoint)?;
+    loop {
+        #[cfg(unix)]
+        {
+            tokio::select! {
+                _ = sigterm.recv() => {
+                    append_daemon_log(&paths.log_file, "received SIGTERM");
+                    break;
+                }
+                _ = sigint.recv() => {
+                    append_daemon_log(&paths.log_file, "received SIGINT");
+                    break;
+                }
+                _ = interval.tick() => {
+                    if let Err(err) = process_tick(&mut status, &mut checkpoint) {
+                        status.set_error(err.to_string());
+                        let _ = status.save(&paths.status_file);
+                        append_daemon_log(&paths.log_file, format!("error: {err}"));
+                    }
+                }
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {
+                    append_daemon_log(&paths.log_file, "received ctrl-c");
+                    break;
+                }
+                _ = interval.tick() => {
+                    if let Err(err) = process_tick(&mut status, &mut checkpoint) {
+                        status.set_error(err.to_string());
+                        let _ = status.save(&paths.status_file);
+                        append_daemon_log(&paths.log_file, format!("error: {err}"));
+                    }
+                }
+            }
+        }
+    }
+
+    status.state = daemon::DaemonRunState::Stopping;
+    status.touch();
+    let _ = status.save(&paths.status_file);
+    let _ = daemon::remove_pid_file(&paths.pid_file);
+    append_daemon_log(&paths.log_file, "daemon stopped");
     Ok(())
 }
 
@@ -411,23 +818,12 @@ enum Commands {
         limit: Option<usize>,
     },
 
-    /// Long-running extraction daemon: watches transport WAL and appends JSONL.
+    /// Long-running extraction daemon and service controls.
     Daemon {
-        /// Path to transport.wal (defaults to AMEM transport wal path).
-        #[arg(long)]
-        wal: Option<PathBuf>,
-        /// Output JSONL file path.
-        #[arg(long)]
-        out: Option<PathBuf>,
-        /// State file path for resume checkpoints.
-        #[arg(long)]
-        state: Option<PathBuf>,
-        /// Poll interval in seconds.
-        #[arg(long, default_value = "2")]
-        poll_secs: u64,
-        /// Include raw JSON payload in extracted records.
-        #[arg(long)]
-        include_raw: bool,
+        #[command(subcommand)]
+        command: Option<DaemonSubcommand>,
+        #[command(flatten)]
+        args: DaemonRunArgs,
     },
 
     /// Print graph statistics.
@@ -867,60 +1263,56 @@ async fn main() -> anyhow::Result<()> {
             }
         }
 
-        Commands::Daemon {
-            wal,
-            out,
-            state,
-            poll_secs,
-            include_raw,
-        } => {
-            let wal_path = wal.unwrap_or_else(capture::default_wal_path);
-            let out_path = out.unwrap_or_else(|| {
-                wal_path
-                    .parent()
-                    .unwrap_or_else(|| Path::new("."))
-                    .join("layer2-extraction.jsonl")
-            });
-            let state_path = state.unwrap_or_else(|| out_path.with_extension("state.json"));
-            let mut daemon_state = load_daemon_state(&state_path)?;
-            let mut started = false;
-
-            loop {
-                let entries = capture::read_entries(&wal_path, None)?;
-                let records = extract_layer2_records(&entries, include_raw);
-                let new_records: Vec<Layer2Record> = records
-                    .into_iter()
-                    .filter(|r| {
-                        daemon_state
-                            .last_sequence
-                            .map(|seq| r.sequence > seq)
-                            .unwrap_or(true)
-                    })
-                    .collect();
-
-                if !new_records.is_empty() {
-                    append_jsonl(&out_path, &new_records)?;
-                    daemon_state.last_sequence = new_records.last().map(|r| r.sequence);
-                    daemon_state.processed_records = daemon_state
-                        .processed_records
-                        .saturating_add(new_records.len() as u64);
-                    daemon_state.updated_at = chrono::Utc::now().to_rfc3339();
-                    save_daemon_state(&state_path, &daemon_state)?;
-                    println!(
-                        "daemon: appended {} records (last_seq={})",
-                        new_records.len(),
-                        daemon_state.last_sequence.unwrap_or(0)
-                    );
-                } else if !started {
-                    println!(
-                        "daemon: watching {} -> {}",
-                        wal_path.display(),
-                        out_path.display()
-                    );
-                    started = true;
+        Commands::Daemon { command, args } => {
+            let subcommand = command.unwrap_or(DaemonSubcommand::Run { args });
+            match subcommand {
+                DaemonSubcommand::Start { foreground, args } => {
+                    if foreground {
+                        run_daemon_loop(args).await?;
+                    } else {
+                        start_daemon_background(&args)?;
+                    }
                 }
-
-                std::thread::sleep(Duration::from_secs(poll_secs.max(1)));
+                DaemonSubcommand::Stop => {
+                    let paths = daemon::DaemonPaths::default();
+                    if stop_daemon(&paths)? {
+                        println!("Daemon stopped");
+                    } else {
+                        println!("Daemon is not running");
+                    }
+                }
+                DaemonSubcommand::Status => {
+                    let paths = daemon::DaemonPaths::default();
+                    show_daemon_status(&paths)?;
+                }
+                DaemonSubcommand::Restart { foreground, args } => {
+                    let paths = daemon::DaemonPaths::default();
+                    let _ = stop_daemon(&paths)?;
+                    std::thread::sleep(Duration::from_secs(1));
+                    if foreground {
+                        run_daemon_loop(args).await?;
+                    } else {
+                        start_daemon_background(&args)?;
+                    }
+                }
+                DaemonSubcommand::Logs { lines, follow } => {
+                    let paths = daemon::DaemonPaths::default();
+                    show_daemon_logs(&paths, lines, follow)?;
+                }
+                DaemonSubcommand::Install => {
+                    let paths = daemon::DaemonPaths::default();
+                    paths.ensure_dirs()?;
+                    let binary = std::env::current_exe()?;
+                    daemon::install_service(&binary, &paths.log_file)?;
+                    println!("Daemon service installed");
+                }
+                DaemonSubcommand::Uninstall => {
+                    daemon::uninstall_service()?;
+                    println!("Daemon service uninstalled");
+                }
+                DaemonSubcommand::Run { args } => {
+                    run_daemon_loop(args).await?;
+                }
             }
         }
 

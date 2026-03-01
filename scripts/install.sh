@@ -412,7 +412,7 @@ for arg in "\${args[@]}"; do
         -h|--help|-V|--version) has_command=1 ;;
         -m|--memory|--memory=*) has_memory=1 ;;
         serve) has_command=1; serve_requested=1 ;;
-        validate|info|delete|export|compact|stats|help) has_command=1 ;;
+        serve-http|validate|info|delete|export|compact|stats|status|extract|replay|daemon|help) has_command=1 ;;
     esac
 done
 
@@ -761,6 +761,64 @@ print_terminal_server_help() {
     echo "  (Ctrl+C to stop after startup check)"
 }
 
+maybe_install_daemon() {
+    if [ "$PROFILE" = "server" ]; then
+        echo "" >&3
+        echo "Daemon auto-install skipped for server profile." >&3
+        return
+    fi
+
+    local decision="${AGENTRA_INSTALL_DAEMON:-auto}"
+    local should_install=true
+
+    case "${decision}" in
+        0|false|FALSE|no|NO|n|N)
+            should_install=false
+            ;;
+        1|true|TRUE|yes|YES|y|Y)
+            should_install=true
+            ;;
+        auto)
+            if [ -t 0 ]; then
+                printf "Install background memory daemon (recommended) [Y/n] " >&3
+                local reply
+                IFS= read -r reply || true
+                case "${reply}" in
+                    n|N|no|NO)
+                        should_install=false
+                        ;;
+                    *)
+                        should_install=true
+                        ;;
+                esac
+            else
+                should_install=true
+            fi
+            ;;
+        *)
+            should_install=true
+            ;;
+    esac
+
+    if [ "$should_install" = false ]; then
+        echo "Daemon installation skipped. Run '${INSTALL_DIR}/${BINARY_NAME} daemon install' anytime." >&3
+        return
+    fi
+
+    if [ "$DRY_RUN" = true ]; then
+        echo "  [dry-run] Would run: ${INSTALL_DIR}/${BINARY_NAME} daemon install" >&3
+        return
+    fi
+
+    echo "Installing daemon service..." >&3
+    if "${INSTALL_DIR}/${BINARY_NAME}" daemon install >/dev/null 2>&1; then
+        echo "Daemon installed and will start automatically on login." >&3
+    else
+        echo "Warning: daemon install failed. You can retry with:" >&3
+        echo "  ${INSTALL_DIR}/${BINARY_NAME} daemon install" >&3
+    fi
+}
+
 print_post_install_next_steps() {
     echo "" >&3
     echo "What happens after installation:" >&3
@@ -773,8 +831,9 @@ print_post_install_next_steps() {
     else
         echo "  2. Restart your MCP client/system so it reloads MCP config." >&3
         echo "  3. ${SERVER_KEY} now auto-detects local .amem files at startup when available." >&3
-        echo "  4. After restart, confirm '${SERVER_KEY}' appears in your MCP server list." >&3
-        echo "  5. Optional feedback: open https://github.com/agentralabs/agentic-memory/issues" >&3
+        echo "  4. Daemon commands: ${INSTALL_DIR}/${BINARY_NAME} daemon status|logs|stop|start." >&3
+        echo "  5. After restart, confirm '${SERVER_KEY}' appears in your MCP server list." >&3
+        echo "  6. Optional feedback: open https://github.com/agentralabs/agentic-memory/issues" >&3
     fi
 }
 
@@ -848,6 +907,7 @@ main() {
     fi
 
     print_profile_help
+    maybe_install_daemon
 
     set_progress 100 "Install complete"
     finish_progress

@@ -216,6 +216,19 @@ agentic-memory-mcp --memory ~/.brain.amem validate
 
 # Print server info as JSON
 agentic-memory-mcp info
+
+# Transport extraction
+agentic-memory-mcp status --wal ~/.agentic/memory/transport.wal
+agentic-memory-mcp extract --wal ~/.agentic/memory/transport.wal --out layer2.jsonl
+agentic-memory-mcp replay --wal ~/.agentic/memory/transport.wal --follow
+
+# Daemon lifecycle
+agentic-memory-mcp daemon start
+agentic-memory-mcp daemon status
+agentic-memory-mcp daemon logs -n 50
+agentic-memory-mcp daemon stop
+agentic-memory-mcp daemon install
+agentic-memory-mcp daemon uninstall
 ```
 
 ## Development
