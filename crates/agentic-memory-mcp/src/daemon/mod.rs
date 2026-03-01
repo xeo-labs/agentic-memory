@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(target_os = "macos")]
 const SERVICE_LABEL_MACOS: &str = "com.agentic.memory";
 #[cfg(target_os = "linux")]
 const SERVICE_LABEL_LINUX: &str = "agentic-memory";
@@ -196,6 +197,7 @@ pub fn stop_process(pid: u32) -> io::Result<bool> {
     }
 }
 
+#[cfg(target_os = "macos")]
 pub fn launchd_plist_path() -> PathBuf {
     std::env::var("HOME")
         .map(PathBuf::from)
@@ -216,6 +218,7 @@ pub fn systemd_service_path() -> PathBuf {
         .join(format!("{SERVICE_LABEL_LINUX}.service"))
 }
 
+#[cfg(target_os = "macos")]
 fn render_launchd_plist(binary_path: &Path, log_path: &Path) -> String {
     format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
