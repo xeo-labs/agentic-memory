@@ -124,7 +124,10 @@ async fn test_evidence_with_seeded_data() {
         &session,
     )
     .await;
-    assert!(result.is_ok(), "memory_evidence should succeed with matching data");
+    assert!(
+        result.is_ok(),
+        "memory_evidence should succeed with matching data"
+    );
 }
 
 #[tokio::test]
@@ -194,12 +197,8 @@ async fn test_suggest_on_empty_graph() {
 #[tokio::test]
 async fn test_quality_nonexistent_node() {
     let session = create_test_session();
-    let result = ToolRegistry::call(
-        "memory_quality",
-        Some(json!({"node_id": 999999})),
-        &session,
-    )
-    .await;
+    let result =
+        ToolRegistry::call("memory_quality", Some(json!({"node_id": 999999})), &session).await;
     // memory_quality returns Ok with error info rather than Err for missing nodes
     let _ = result;
 }
@@ -232,7 +231,9 @@ async fn test_quality_after_correction() {
 
     let add = ToolRegistry::call(
         "memory_add",
-        Some(json!({"event_type": "fact", "content": "Original incorrect fact", "confidence": 0.3})),
+        Some(
+            json!({"event_type": "fact", "content": "Original incorrect fact", "confidence": 0.3}),
+        ),
         &session,
     )
     .await
@@ -250,12 +251,8 @@ async fn test_quality_after_correction() {
     let new_id = result_json(&correct)["new_node_id"].as_u64().unwrap();
 
     // Quality of new node should work
-    let result = ToolRegistry::call(
-        "memory_quality",
-        Some(json!({"node_id": new_id})),
-        &session,
-    )
-    .await;
+    let result =
+        ToolRegistry::call("memory_quality", Some(json!({"node_id": new_id})), &session).await;
     assert!(result.is_ok());
 }
 
@@ -367,13 +364,9 @@ async fn test_correction_chain_three_deep() {
     let id3 = result_json(&v3)["new_node_id"].as_u64().unwrap();
 
     // Resolve from the original — should follow chain to latest
-    let resolved = ToolRegistry::call(
-        "memory_resolve",
-        Some(json!({"node_id": id1})),
-        &session,
-    )
-    .await
-    .unwrap();
+    let resolved = ToolRegistry::call("memory_resolve", Some(json!({"node_id": id1})), &session)
+        .await
+        .unwrap();
     let resolved_json = result_json(&resolved);
     assert_eq!(
         resolved_json["resolved_id"].as_u64().unwrap(),
@@ -419,12 +412,8 @@ async fn test_correction_preserves_edges() {
     .unwrap();
 
     // Traverse from the second node — should still work
-    let traverse = ToolRegistry::call(
-        "memory_traverse",
-        Some(json!({"start_id": id2})),
-        &session,
-    )
-    .await;
+    let traverse =
+        ToolRegistry::call("memory_traverse", Some(json!({"start_id": id2})), &session).await;
     assert!(traverse.is_ok());
 }
 
@@ -513,7 +502,10 @@ async fn test_traverse_zero_depth() {
     .unwrap();
 
     let parsed = result_json(&result);
-    assert!(parsed["visited_count"].as_u64().unwrap() >= 1, "Depth 0 should return at least the start node");
+    assert!(
+        parsed["visited_count"].as_u64().unwrap() >= 1,
+        "Depth 0 should return at least the start node"
+    );
 }
 
 #[tokio::test]
@@ -586,12 +578,8 @@ async fn test_grounding_rapid_fire_20_claims() {
     let start = std::time::Instant::now();
     for i in 0..20 {
         let claim = format!("Seeded memory item number {i}");
-        let result = ToolRegistry::call(
-            "memory_ground",
-            Some(json!({"claim": claim})),
-            &session,
-        )
-        .await;
+        let result =
+            ToolRegistry::call("memory_ground", Some(json!({"claim": claim})), &session).await;
         assert!(result.is_ok(), "Grounding claim {i} should not panic");
     }
     let elapsed = start.elapsed();
@@ -623,12 +611,8 @@ async fn test_grounding_claim_with_special_chars() {
     ];
 
     for claim in &claims {
-        let result = ToolRegistry::call(
-            "memory_ground",
-            Some(json!({"claim": claim})),
-            &session,
-        )
-        .await;
+        let result =
+            ToolRegistry::call("memory_ground", Some(json!({"claim": claim})), &session).await;
         assert!(result.is_ok(), "Grounding '{}' should not panic", claim);
     }
 }
@@ -677,7 +661,11 @@ async fn test_concurrent_add_and_query() {
 
     for (i, handle) in handles.into_iter().enumerate() {
         let result = handle.await.unwrap();
-        assert!(result.is_ok(), "Concurrent task {i} failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Concurrent task {i} failed: {:?}",
+            result.err()
+        );
     }
 }
 
@@ -761,7 +749,9 @@ fn test_mcp_tool_names_are_snake_case() {
     let tools = ToolRegistry::list_tools();
     for tool in &tools {
         assert!(
-            tool.name.chars().all(|c| c.is_lowercase() || c == '_' || c.is_ascii_digit()),
+            tool.name
+                .chars()
+                .all(|c| c.is_lowercase() || c == '_' || c.is_ascii_digit()),
             "Tool name '{}' should be snake_case",
             tool.name
         );
@@ -809,7 +799,11 @@ fn test_mcp_no_duplicate_tool_names() {
     let before = names.len();
     names.sort();
     names.dedup();
-    assert_eq!(before, names.len(), "Duplicate tool names found in registry");
+    assert_eq!(
+        before,
+        names.len(),
+        "Duplicate tool names found in registry"
+    );
 }
 
 #[test]
@@ -907,13 +901,25 @@ async fn test_rapid_fire_mixed_tools_no_corruption() {
     let session = create_test_session();
 
     let tools_and_args: Vec<(&str, serde_json::Value)> = vec![
-        ("memory_add", json!({"event_type": "fact", "content": "Mix 1"})),
-        ("memory_add", json!({"event_type": "decision", "content": "Mix 2"})),
+        (
+            "memory_add",
+            json!({"event_type": "fact", "content": "Mix 1"}),
+        ),
+        (
+            "memory_add",
+            json!({"event_type": "decision", "content": "Mix 2"}),
+        ),
         ("memory_query", json!({})),
         ("memory_stats", json!({})),
-        ("conversation_log", json!({"user_message": "Mix Q", "agent_response": "Mix A"})),
+        (
+            "conversation_log",
+            json!({"user_message": "Mix Q", "agent_response": "Mix A"}),
+        ),
         ("memory_query", json!({"event_types": ["fact"]})),
-        ("memory_add", json!({"event_type": "inference", "content": "Mix 3"})),
+        (
+            "memory_add",
+            json!({"event_type": "inference", "content": "Mix 3"}),
+        ),
         ("memory_stats", json!({})),
     ];
 
@@ -1069,11 +1075,41 @@ async fn test_workspace_5_contexts_cross_query() {
     let session = create_test_session();
 
     let topics = [
-        ("auth.amem", &[("fact", "Authentication uses JWT"), ("decision", "Chose RS256")][..]),
-        ("db.amem", &[("fact", "Database is PostgreSQL 16"), ("fact", "Uses sqlx for queries")][..]),
-        ("deploy.amem", &[("fact", "Deployed on Docker"), ("decision", "Fly.io hosting")][..]),
-        ("monitor.amem", &[("fact", "Monitoring with Prometheus"), ("fact", "Alerting via PagerDuty")][..]),
-        ("test.amem", &[("fact", "Testing with cargo test"), ("decision", "Added integration tests")][..]),
+        (
+            "auth.amem",
+            &[
+                ("fact", "Authentication uses JWT"),
+                ("decision", "Chose RS256"),
+            ][..],
+        ),
+        (
+            "db.amem",
+            &[
+                ("fact", "Database is PostgreSQL 16"),
+                ("fact", "Uses sqlx for queries"),
+            ][..],
+        ),
+        (
+            "deploy.amem",
+            &[
+                ("fact", "Deployed on Docker"),
+                ("decision", "Fly.io hosting"),
+            ][..],
+        ),
+        (
+            "monitor.amem",
+            &[
+                ("fact", "Monitoring with Prometheus"),
+                ("fact", "Alerting via PagerDuty"),
+            ][..],
+        ),
+        (
+            "test.amem",
+            &[
+                ("fact", "Testing with cargo test"),
+                ("decision", "Added integration tests"),
+            ][..],
+        ),
     ];
 
     let ws = ToolRegistry::call(
@@ -1083,7 +1119,10 @@ async fn test_workspace_5_contexts_cross_query() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let mut seeded_files = Vec::new();
     for (name, memories) in &topics {
@@ -1132,7 +1171,10 @@ async fn test_workspace_compare_missing_item() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     for path in [&s1.path, &s2.path] {
         ToolRegistry::call(
@@ -1174,7 +1216,10 @@ async fn test_workspace_query_empty_string() {
     )
     .await
     .unwrap();
-    let ws_id = result_json(&ws)["workspace_id"].as_str().unwrap().to_string();
+    let ws_id = result_json(&ws)["workspace_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     ToolRegistry::call(
         "memory_workspace_add",
@@ -1229,12 +1274,8 @@ async fn test_memory_add_100kb_content() {
 #[tokio::test]
 async fn test_memory_query_negative_max_results() {
     let session = create_test_session();
-    let result = ToolRegistry::call(
-        "memory_query",
-        Some(json!({"max_results": -1})),
-        &session,
-    )
-    .await;
+    let result =
+        ToolRegistry::call("memory_query", Some(json!({"max_results": -1})), &session).await;
     // Should handle gracefully (use default or return error)
     let _ = result;
 }
@@ -1244,12 +1285,8 @@ async fn test_memory_query_zero_max_results() {
     let session = create_test_session();
     seed_facts(&session, 5).await;
 
-    let result = ToolRegistry::call(
-        "memory_query",
-        Some(json!({"max_results": 0})),
-        &session,
-    )
-    .await;
+    let result =
+        ToolRegistry::call("memory_query", Some(json!({"max_results": 0})), &session).await;
     // Should return 0 results or use default — either way, no panic
     let _ = result;
 }
