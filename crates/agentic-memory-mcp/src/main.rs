@@ -1,18 +1,258 @@
 //! AgenticMemory MCP Server — entry point.
 
+use std::collections::BTreeSet;
+use std::fs::OpenOptions;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::Mutex;
 
 use clap::{Parser, Subcommand};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use agentic_memory_mcp::config::resolve_memory_path;
 use agentic_memory_mcp::protocol::ProtocolHandler;
 use agentic_memory_mcp::session::autosave::spawn_maintenance;
 use agentic_memory_mcp::session::SessionManager;
 use agentic_memory_mcp::tools::ToolRegistry;
+use agentic_memory_mcp::transport::capture::{
+    self, CaptureDirection, CaptureWalStatus, CapturedTransportEntry,
+};
 use agentic_memory_mcp::transport::StdioTransport;
 use agentic_memory_mcp::types::MemoryMode;
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct ClientIdentity {
+    name: String,
+    version: String,
+    family: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct Layer2Record {
+    timestamp: String,
+    timestamp_nanos: i64,
+    sequence: u64,
+    direction: String,
+    wal_session_id: String,
+    client_name: Option<String>,
+    client_version: Option<String>,
+    client_family: Option<String>,
+    message_kind: String,
+    method: Option<String>,
+    request_id: Option<Value>,
+    tool_name: Option<String>,
+    prompt_name: Option<String>,
+    uri: Option<String>,
+    payload_bytes: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    raw: Option<Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct DaemonState {
+    last_sequence: Option<u64>,
+    processed_records: u64,
+    updated_at: String,
+}
+
+fn infer_client_family(name: &str) -> String {
+    let lower = name.to_ascii_lowercase();
+    if lower.contains("claude") {
+        "claude".to_string()
+    } else if lower.contains("cursor") {
+        "cursor".to_string()
+    } else if lower.contains("windsurf") || lower.contains("codeium") {
+        "windsurf".to_string()
+    } else if lower.contains("cody") || lower.contains("sourcegraph") {
+        "cody".to_string()
+    } else {
+        "unknown".to_string()
+    }
+}
+
+fn ts_nanos_to_string(nanos: i64) -> String {
+    let secs = nanos.div_euclid(1_000_000_000);
+    let sub = nanos.rem_euclid(1_000_000_000) as u32;
+    chrono::DateTime::<chrono::Utc>::from_timestamp(secs, sub)
+        .map(|dt| dt.to_rfc3339())
+        .unwrap_or_else(|| "1970-01-01T00:00:00Z".to_string())
+}
+
+fn parse_json(data: &[u8]) -> Option<Value> {
+    serde_json::from_slice::<Value>(data).ok()
+}
+
+fn parse_initialize_client(value: &Value) -> Option<ClientIdentity> {
+    let method = value.get("method").and_then(Value::as_str)?;
+    if method != "initialize" {
+        return None;
+    }
+    let info = value.get("params")?.get("clientInfo")?;
+    let name = info.get("name").and_then(Value::as_str)?.to_string();
+    let version = info
+        .get("version")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown")
+        .to_string();
+    Some(ClientIdentity {
+        family: infer_client_family(&name),
+        name,
+        version,
+    })
+}
+
+fn extract_layer2_records(
+    entries: &[CapturedTransportEntry],
+    include_raw: bool,
+) -> Vec<Layer2Record> {
+    let mut current_client: Option<ClientIdentity> = None;
+    let mut out = Vec::with_capacity(entries.len());
+
+    for entry in entries {
+        let parsed = parse_json(&entry.data);
+        if let Some(v) = parsed.as_ref().and_then(parse_initialize_client) {
+            current_client = Some(v);
+        }
+
+        let method = parsed
+            .as_ref()
+            .and_then(|v| v.get("method"))
+            .and_then(Value::as_str)
+            .map(ToString::to_string);
+
+        let request_id = parsed.as_ref().and_then(|v| v.get("id")).cloned();
+
+        let mut message_kind = "unknown".to_string();
+        let mut tool_name = None;
+        let mut prompt_name = None;
+        let mut uri = None;
+
+        if let Some(v) = parsed.as_ref() {
+            if let Some(m) = method.as_deref() {
+                message_kind = "request".to_string();
+                match m {
+                    "initialize" => message_kind = "initialize".to_string(),
+                    "tools/call" => {
+                        message_kind = "tool_call".to_string();
+                        tool_name = v
+                            .get("params")
+                            .and_then(|p| p.get("name"))
+                            .and_then(Value::as_str)
+                            .map(ToString::to_string);
+                    }
+                    "prompts/get" => {
+                        message_kind = "prompt_get".to_string();
+                        prompt_name = v
+                            .get("params")
+                            .and_then(|p| p.get("name"))
+                            .and_then(Value::as_str)
+                            .map(ToString::to_string);
+                    }
+                    "resources/read" => {
+                        message_kind = "resource_read".to_string();
+                        uri = v
+                            .get("params")
+                            .and_then(|p| p.get("uri"))
+                            .and_then(Value::as_str)
+                            .map(ToString::to_string);
+                    }
+                    "initialized" | "$/cancelRequest" | "notifications/cancelled" => {
+                        message_kind = "notification".to_string();
+                    }
+                    _ => {}
+                }
+            } else if v.get("result").is_some() {
+                message_kind = "response".to_string();
+            } else if v.get("error").is_some() {
+                message_kind = "error".to_string();
+            }
+        } else {
+            message_kind = "invalid_json".to_string();
+        }
+
+        let client = current_client.clone();
+        out.push(Layer2Record {
+            timestamp: ts_nanos_to_string(entry.timestamp_nanos),
+            timestamp_nanos: entry.timestamp_nanos,
+            sequence: entry.sequence,
+            direction: match entry.direction {
+                CaptureDirection::Inbound => "inbound".to_string(),
+                CaptureDirection::Outbound => "outbound".to_string(),
+            },
+            wal_session_id: entry.session_id_string(),
+            client_name: client.as_ref().map(|c| c.name.clone()),
+            client_version: client.as_ref().map(|c| c.version.clone()),
+            client_family: client.as_ref().map(|c| c.family.clone()),
+            message_kind,
+            method,
+            request_id,
+            tool_name,
+            prompt_name,
+            uri,
+            payload_bytes: entry.data.len(),
+            raw: if include_raw { parsed } else { None },
+        });
+    }
+
+    out
+}
+
+fn print_replay_line(record: &Layer2Record) {
+    let actor = record
+        .client_family
+        .as_ref()
+        .or(record.client_name.as_ref())
+        .map(String::as_str)
+        .unwrap_or("unknown");
+    let target = record
+        .tool_name
+        .as_ref()
+        .or(record.prompt_name.as_ref())
+        .or(record.uri.as_ref())
+        .or(record.method.as_ref())
+        .map(String::as_str)
+        .unwrap_or("-");
+    println!(
+        "[{}] seq={} {} {} {} {}",
+        record.timestamp, record.sequence, record.direction, actor, record.message_kind, target
+    );
+}
+
+fn load_daemon_state(path: &Path) -> anyhow::Result<DaemonState> {
+    if !path.exists() {
+        return Ok(DaemonState::default());
+    }
+    let raw = std::fs::read_to_string(path)?;
+    Ok(serde_json::from_str::<DaemonState>(&raw).unwrap_or_default())
+}
+
+fn save_daemon_state(path: &Path, state: &DaemonState) -> anyhow::Result<()> {
+    let tmp = path.with_extension("tmp");
+    let payload = serde_json::to_vec_pretty(state)?;
+    std::fs::write(&tmp, payload)?;
+    std::fs::rename(tmp, path)?;
+    Ok(())
+}
+
+fn append_jsonl(path: &Path, records: &[Layer2Record]) -> anyhow::Result<()> {
+    if records.is_empty() {
+        return Ok(());
+    }
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let file = OpenOptions::new().create(true).append(true).open(path)?;
+    let mut writer = std::io::BufWriter::new(file);
+    for record in records {
+        serde_json::to_writer(&mut writer, record)?;
+        writer.write_all(b"\n")?;
+    }
+    writer.flush()?;
+    Ok(())
+}
 
 #[derive(Parser)]
 #[command(
@@ -130,6 +370,64 @@ enum Commands {
         /// Skip confirmation prompt.
         #[arg(long, short = 'y')]
         yes: bool,
+    },
+
+    /// Show transport WAL extraction status and detected client mix.
+    Status {
+        /// Path to transport.wal (defaults to AMEM transport wal path).
+        #[arg(long)]
+        wal: Option<PathBuf>,
+    },
+
+    /// Layer 2 extraction from transport WAL into structured records.
+    Extract {
+        /// Path to transport.wal (defaults to AMEM transport wal path).
+        #[arg(long)]
+        wal: Option<PathBuf>,
+        /// Optional file path to write JSONL output.
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// Include raw JSON payload in extracted records.
+        #[arg(long)]
+        include_raw: bool,
+        /// Limit decoded WAL entries to the most recent N.
+        #[arg(long)]
+        limit: Option<usize>,
+    },
+
+    /// Replay extracted transport events in time order.
+    Replay {
+        /// Path to transport.wal (defaults to AMEM transport wal path).
+        #[arg(long)]
+        wal: Option<PathBuf>,
+        /// Keep watching the WAL for new events.
+        #[arg(long)]
+        follow: bool,
+        /// Poll interval (seconds) when --follow is enabled.
+        #[arg(long, default_value = "2")]
+        poll_secs: u64,
+        /// Limit decoded WAL entries to the most recent N.
+        #[arg(long)]
+        limit: Option<usize>,
+    },
+
+    /// Long-running extraction daemon: watches transport WAL and appends JSONL.
+    Daemon {
+        /// Path to transport.wal (defaults to AMEM transport wal path).
+        #[arg(long)]
+        wal: Option<PathBuf>,
+        /// Output JSONL file path.
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// State file path for resume checkpoints.
+        #[arg(long)]
+        state: Option<PathBuf>,
+        /// Poll interval in seconds.
+        #[arg(long, default_value = "2")]
+        poll_secs: u64,
+        /// Include raw JSON payload in extracted records.
+        #[arg(long)]
+        include_raw: bool,
     },
 
     /// Print graph statistics.
@@ -484,6 +782,146 @@ async fn main() -> anyhow::Result<()> {
             }
 
             println!("Compacted: removed {removed_count} nodes below threshold {keep_above}");
+        }
+
+        Commands::Status { wal } => {
+            let wal_path = wal.unwrap_or_else(capture::default_wal_path);
+            let status: CaptureWalStatus = capture::wal_status(&wal_path)?;
+            let extracted = capture::read_entries(&wal_path, Some(20_000))?;
+            let records = extract_layer2_records(&extracted, false);
+            let mut clients = BTreeSet::new();
+            for rec in &records {
+                if let Some(name) = rec.client_name.as_ref() {
+                    clients.insert(name.clone());
+                } else if let Some(family) = rec.client_family.as_ref() {
+                    clients.insert(family.clone());
+                }
+            }
+
+            let tool_count = ToolRegistry::list_tools().len();
+            let latest = records.last().map(|r| r.timestamp.clone());
+            let session = status
+                .session_id
+                .map(|id| uuid::Uuid::from_bytes(id).to_string());
+            let payload = serde_json::json!({
+                "wal_path": status.wal_path,
+                "exists": status.exists,
+                "bytes": status.bytes,
+                "entries": status.entries,
+                "next_sequence": status.next_sequence,
+                "wal_session_id": session,
+                "detected_clients": clients.into_iter().collect::<Vec<_>>(),
+                "latest_event_at": latest,
+                "mcp_tool_count": tool_count
+            });
+            println!("{}", serde_json::to_string_pretty(&payload)?);
+        }
+
+        Commands::Extract {
+            wal,
+            out,
+            include_raw,
+            limit,
+        } => {
+            let wal_path = wal.unwrap_or_else(capture::default_wal_path);
+            let entries = capture::read_entries(&wal_path, limit)?;
+            let records = extract_layer2_records(&entries, include_raw);
+
+            if let Some(out_path) = out {
+                append_jsonl(&out_path, &records)?;
+                let summary = serde_json::json!({
+                    "status": "ok",
+                    "wal_path": wal_path,
+                    "out": out_path,
+                    "records_written": records.len(),
+                    "mcp_tool_count_unchanged": ToolRegistry::list_tools().len()
+                });
+                println!("{}", serde_json::to_string_pretty(&summary)?);
+            } else {
+                println!("{}", serde_json::to_string_pretty(&records)?);
+            }
+        }
+
+        Commands::Replay {
+            wal,
+            follow,
+            poll_secs,
+            limit,
+        } => {
+            let wal_path = wal.unwrap_or_else(capture::default_wal_path);
+            let mut last_seq: Option<u64> = None;
+            loop {
+                let entries = capture::read_entries(&wal_path, limit)?;
+                let records = extract_layer2_records(&entries, false);
+                for record in records {
+                    if last_seq.map(|s| record.sequence <= s).unwrap_or(false) {
+                        continue;
+                    }
+                    print_replay_line(&record);
+                    last_seq = Some(record.sequence);
+                }
+                if !follow {
+                    break;
+                }
+                std::thread::sleep(Duration::from_secs(poll_secs.max(1)));
+            }
+        }
+
+        Commands::Daemon {
+            wal,
+            out,
+            state,
+            poll_secs,
+            include_raw,
+        } => {
+            let wal_path = wal.unwrap_or_else(capture::default_wal_path);
+            let out_path = out.unwrap_or_else(|| {
+                wal_path
+                    .parent()
+                    .unwrap_or_else(|| Path::new("."))
+                    .join("layer2-extraction.jsonl")
+            });
+            let state_path = state.unwrap_or_else(|| out_path.with_extension("state.json"));
+            let mut daemon_state = load_daemon_state(&state_path)?;
+            let mut started = false;
+
+            loop {
+                let entries = capture::read_entries(&wal_path, None)?;
+                let records = extract_layer2_records(&entries, include_raw);
+                let new_records: Vec<Layer2Record> = records
+                    .into_iter()
+                    .filter(|r| {
+                        daemon_state
+                            .last_sequence
+                            .map(|seq| r.sequence > seq)
+                            .unwrap_or(true)
+                    })
+                    .collect();
+
+                if !new_records.is_empty() {
+                    append_jsonl(&out_path, &new_records)?;
+                    daemon_state.last_sequence = new_records.last().map(|r| r.sequence);
+                    daemon_state.processed_records = daemon_state
+                        .processed_records
+                        .saturating_add(new_records.len() as u64);
+                    daemon_state.updated_at = chrono::Utc::now().to_rfc3339();
+                    save_daemon_state(&state_path, &daemon_state)?;
+                    println!(
+                        "daemon: appended {} records (last_seq={})",
+                        new_records.len(),
+                        daemon_state.last_sequence.unwrap_or(0)
+                    );
+                } else if !started {
+                    println!(
+                        "daemon: watching {} -> {}",
+                        wal_path.display(),
+                        out_path.display()
+                    );
+                    started = true;
+                }
+
+                std::thread::sleep(Duration::from_secs(poll_secs.max(1)));
+            }
         }
 
         Commands::Stats => {

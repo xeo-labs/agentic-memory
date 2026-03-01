@@ -36,6 +36,58 @@ impl Direction {
     }
 }
 
+/// Public direction type for decoded transport WAL entries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CaptureDirection {
+    Inbound,
+    Outbound,
+}
+
+impl CaptureDirection {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Inbound => "inbound",
+            Self::Outbound => "outbound",
+        }
+    }
+}
+
+impl From<Direction> for CaptureDirection {
+    fn from(value: Direction) -> Self {
+        match value {
+            Direction::Inbound => Self::Inbound,
+            Direction::Outbound => Self::Outbound,
+        }
+    }
+}
+
+/// Decoded transport WAL entry.
+#[derive(Debug, Clone)]
+pub struct CapturedTransportEntry {
+    pub timestamp_nanos: i64,
+    pub sequence: u64,
+    pub direction: CaptureDirection,
+    pub session_id: [u8; 16],
+    pub data: Vec<u8>,
+}
+
+impl CapturedTransportEntry {
+    pub fn session_id_string(&self) -> String {
+        uuid::Uuid::from_bytes(self.session_id).to_string()
+    }
+}
+
+/// Basic status information for a transport WAL file.
+#[derive(Debug, Clone)]
+pub struct CaptureWalStatus {
+    pub wal_path: PathBuf,
+    pub exists: bool,
+    pub bytes: u64,
+    pub entries: u64,
+    pub next_sequence: u64,
+    pub session_id: Option<[u8; 16]>,
+}
+
 #[derive(Debug, Clone, Copy)]
 enum SyncMode {
     EveryMessage,
@@ -405,6 +457,149 @@ fn capture_dir_from_env() -> PathBuf {
     PathBuf::from(".agentic/memory/transport-wal")
 }
 
+/// Resolve the default transport capture directory from environment.
+pub fn default_capture_dir() -> PathBuf {
+    capture_dir_from_env()
+}
+
+/// Resolve the default transport WAL path.
+pub fn default_wal_path() -> PathBuf {
+    default_capture_dir().join("transport.wal")
+}
+
+/// Read basic status for a transport WAL file.
+pub fn wal_status(path: &Path) -> std::io::Result<CaptureWalStatus> {
+    if !path.exists() {
+        return Ok(CaptureWalStatus {
+            wal_path: path.to_path_buf(),
+            exists: false,
+            bytes: 0,
+            entries: 0,
+            next_sequence: 0,
+            session_id: None,
+        });
+    }
+
+    let mut file = OpenOptions::new().read(true).open(path)?;
+    let bytes = file.metadata()?.len();
+    let session_id = if bytes >= HEADER_BYTES as u64 {
+        Some(read_header(&mut file)?.session_id)
+    } else {
+        None
+    };
+    let summary = recover_entries(path)?;
+
+    Ok(CaptureWalStatus {
+        wal_path: path.to_path_buf(),
+        exists: true,
+        bytes,
+        entries: summary.entries,
+        next_sequence: summary.next_sequence,
+        session_id,
+    })
+}
+
+/// Decode transport WAL entries in sequence order.
+///
+/// Corrupt tails are tolerated by stopping at the last valid entry.
+/// If `max_entries` is provided, returns only the most recent `max_entries` entries.
+pub fn read_entries(
+    path: &Path,
+    max_entries: Option<usize>,
+) -> std::io::Result<Vec<CapturedTransportEntry>> {
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut file = OpenOptions::new().read(true).open(path)?;
+    let file_len = file.metadata()?.len();
+    if file_len <= HEADER_BYTES as u64 {
+        return Ok(Vec::new());
+    }
+
+    let header = read_header(&mut file)?;
+    let mut reader = BufReader::new(file);
+    reader.seek(SeekFrom::Start(HEADER_BYTES as u64))?;
+
+    let mut entries = Vec::new();
+
+    loop {
+        let pos = reader.stream_position()?;
+        if pos >= file_len {
+            break;
+        }
+
+        let mut len_buf = [0u8; 4];
+        match reader.read_exact(&mut len_buf) {
+            Ok(_) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(e) => return Err(e),
+        }
+        let total_len = u32::from_le_bytes(len_buf) as usize;
+        if !(ENTRY_FIXED_BYTES..=MAX_ENTRY_BYTES).contains(&total_len) {
+            break;
+        }
+
+        let remaining = total_len.saturating_sub(4);
+        let mut body = vec![0u8; remaining];
+        match reader.read_exact(&mut body) {
+            Ok(_) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(e) => return Err(e),
+        }
+        if body.len() < (ENTRY_FIXED_BYTES - 4) {
+            break;
+        }
+
+        let checksum = u32::from_le_bytes([body[0], body[1], body[2], body[3]]);
+        let timestamp_nanos = i64::from_le_bytes([
+            body[4], body[5], body[6], body[7], body[8], body[9], body[10], body[11],
+        ]);
+        let sequence = u64::from_le_bytes([
+            body[12], body[13], body[14], body[15], body[16], body[17], body[18], body[19],
+        ]);
+        let direction = match Direction::from_u8(body[20]) {
+            Some(d) => d,
+            None => break,
+        };
+
+        let mut entry_session = [0u8; 16];
+        entry_session.copy_from_slice(&body[21..37]);
+        let data_len = u32::from_le_bytes([body[37], body[38], body[39], body[40]]) as usize;
+        let data_offset = 41usize;
+        if body.len() < data_offset + data_len {
+            break;
+        }
+        let data = body[data_offset..data_offset + data_len].to_vec();
+        if crc32fast::hash(&data) != checksum {
+            break;
+        }
+
+        entries.push(CapturedTransportEntry {
+            timestamp_nanos,
+            sequence,
+            direction: direction.into(),
+            session_id: if entry_session == [0u8; 16] {
+                header.session_id
+            } else {
+                entry_session
+            },
+            data,
+        });
+    }
+
+    if let Some(max) = max_entries {
+        if max == 0 {
+            return Ok(Vec::new());
+        }
+        if entries.len() > max {
+            entries = entries.split_off(entries.len() - max);
+        }
+    }
+
+    Ok(entries)
+}
+
 fn now_unix_secs() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -505,5 +700,29 @@ mod tests {
         let summary = recover_entries(&wal_path).expect("recover");
         assert_eq!(summary.entries, 0);
         assert_eq!(summary.truncate_to, HEADER_BYTES as u64);
+    }
+
+    #[test]
+    fn public_read_entries_and_status_work() {
+        let dir = tempdir().expect("temp dir");
+        let mut capture = TransportCapture::for_tests(dir.path()).expect("capture init");
+        capture
+            .capture_inbound(br#"{"jsonrpc":"2.0","method":"ping"}"#)
+            .expect("in");
+        capture
+            .capture_outbound(br#"{"jsonrpc":"2.0","result":{}}"#)
+            .expect("out");
+        capture.sync().expect("sync");
+
+        let wal_path = dir.path().join("transport.wal");
+        let status = wal_status(&wal_path).expect("status");
+        assert!(status.exists);
+        assert_eq!(status.entries, 2);
+        assert!(status.session_id.is_some());
+
+        let entries = read_entries(&wal_path, None).expect("read entries");
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].direction.as_str(), "inbound");
+        assert_eq!(entries[1].direction.as_str(), "outbound");
     }
 }
