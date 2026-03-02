@@ -3,9 +3,9 @@
 //! Stores cognitive events (facts, decisions, inferences, corrections, skills, episodes)
 //! as nodes in a graph, with typed edges representing relationships between them.
 
+pub mod bridges;
 #[cfg(feature = "cli")]
 pub mod cli;
-pub mod bridges;
 pub mod contracts;
 pub mod engine;
 #[cfg(feature = "ffi")]

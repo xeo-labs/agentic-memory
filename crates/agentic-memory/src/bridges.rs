@@ -34,7 +34,12 @@ pub trait IdentityBridge: Send + Sync {
 /// Bridge to agentic-vision for linking visual captures to memory nodes.
 pub trait VisionBridge: Send + Sync {
     /// Link a visual capture to a memory node
-    fn link_capture(&self, capture_id: u64, node_id: u64, relationship: &str) -> Result<(), String> {
+    fn link_capture(
+        &self,
+        capture_id: u64,
+        node_id: u64,
+        relationship: &str,
+    ) -> Result<(), String> {
         let _ = (capture_id, node_id, relationship);
         Err("Vision bridge not connected".to_string())
     }
@@ -148,7 +153,7 @@ impl CodebaseBridge for NoOpBridges {}
 impl CommBridge for NoOpBridges {}
 
 /// Configuration for which bridges are active.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct BridgeConfig {
     pub identity_enabled: bool,
     pub vision_enabled: bool,
@@ -156,19 +161,6 @@ pub struct BridgeConfig {
     pub contract_enabled: bool,
     pub codebase_enabled: bool,
     pub comm_enabled: bool,
-}
-
-impl Default for BridgeConfig {
-    fn default() -> Self {
-        Self {
-            identity_enabled: false,
-            vision_enabled: false,
-            time_enabled: false,
-            contract_enabled: false,
-            codebase_enabled: false,
-            comm_enabled: false,
-        }
-    }
 }
 
 /// Hydra adapter trait — future orchestrator discovery interface.
@@ -271,7 +263,7 @@ mod tests {
 
     #[test]
     fn noop_bridges_default_and_clone() {
-        let b = NoOpBridges::default();
+        let b = NoOpBridges;
         let _b2 = b.clone();
     }
 }
