@@ -161,12 +161,12 @@ async fn handle_request(
                         .into_response()
                 })?;
 
-            let session = {
-                let mut reg = registry.lock().await;
-                reg.get_or_create(user_id).map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        AxumJson(serde_json::json!({
+                let session = {
+                    let mut reg = registry.lock().await;
+                    reg.get_or_create(user_id, *memory_mode).map_err(|e| {
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            AxumJson(serde_json::json!({
                             "jsonrpc": "2.0",
                             "id": null,
                             "error": {

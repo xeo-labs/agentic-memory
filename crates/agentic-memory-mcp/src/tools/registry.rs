@@ -88,6 +88,10 @@ impl ToolRegistry {
         tools.extend(invention_resurrection::all_definitions()); // 17 tools
         tools.extend(invention_metamemory::all_definitions()); // 17 tools
         tools.extend(invention_transcendent::all_definitions()); // 16 tools
+        #[cfg(feature = "v3")]
+        {
+            tools.extend(super::v3_tools::list_v3_tools());
+        }
         tools
     }
 

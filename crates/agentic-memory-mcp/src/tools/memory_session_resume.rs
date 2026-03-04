@@ -145,10 +145,39 @@ pub async fn execute(
         })
         .collect();
 
-    // 4. Find recent skills / corrections (remaining limit).
+    // 4. Find recent inference context (tool/prompt auto-capture and derived context).
+    let inference_pattern = PatternParams {
+        event_types: vec![EventType::Inference],
+        min_confidence: Some(0.6),
+        max_confidence: None,
+        session_ids: vec![],
+        created_after: None,
+        created_before: None,
+        min_decay_score: None,
+        max_results: params.limit / 3,
+        sort_by: PatternSort::MostRecent,
+    };
+
+    let inferences = query
+        .pattern(graph, inference_pattern)
+        .map_err(|e| McpError::AgenticMemory(format!("Inference query failed: {e}")))?;
+
+    let inference_nodes: Vec<Value> = inferences
+        .iter()
+        .map(|i| {
+            json!({
+                "id": i.id,
+                "content": i.content,
+                "confidence": i.confidence,
+                "session_id": i.session_id,
+            })
+        })
+        .collect();
+
+    // 5. Find recent skills / corrections (remaining limit).
     let remaining = params
         .limit
-        .saturating_sub(decision_nodes.len() + fact_nodes.len());
+        .saturating_sub(decision_nodes.len() + fact_nodes.len() + inference_nodes.len());
     let recent_pattern = PatternParams {
         event_types: vec![EventType::Skill, EventType::Correction],
         min_confidence: None,
@@ -178,7 +207,7 @@ pub async fn execute(
         })
         .collect();
 
-    // 5. Session gap detection.
+    // 6. Session gap detection.
     let current_session = session.current_session_id();
     let session_ids = graph.session_index().session_ids();
     let prev_session_id = session_ids
@@ -187,7 +216,8 @@ pub async fn execute(
         .max()
         .copied();
 
-    let total_loaded = decision_nodes.len() + fact_nodes.len() + recent_nodes.len();
+    let total_loaded =
+        decision_nodes.len() + fact_nodes.len() + inference_nodes.len() + recent_nodes.len();
 
     Ok(ToolCallResult::json(&json!({
         "current_session": current_session,
@@ -195,6 +225,7 @@ pub async fn execute(
         "last_episode": last_episode,
         "recent_decisions": decision_nodes,
         "recent_facts": fact_nodes,
+        "recent_inferences": inference_nodes,
         "recent_other": recent_nodes,
         "total_loaded": total_loaded,
         "message": if last_episode.is_some() {

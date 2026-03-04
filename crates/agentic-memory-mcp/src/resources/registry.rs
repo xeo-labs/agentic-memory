@@ -21,7 +21,15 @@ impl ResourceRegistry {
 
     /// List all concrete (non-templated) resources.
     pub fn list_resources() -> Vec<ResourceDefinition> {
-        templates::list_resources()
+        #[cfg(feature = "v3")]
+        let mut resources = templates::list_resources();
+        #[cfg(not(feature = "v3"))]
+        let resources = templates::list_resources();
+        #[cfg(feature = "v3")]
+        {
+            resources.extend(crate::v3_resources::list_v3_resources());
+        }
+        resources
     }
 
     /// Read a resource by URI, dispatching to the appropriate handler.
@@ -29,6 +37,30 @@ impl ResourceRegistry {
         uri: &str,
         session: &Arc<Mutex<SessionManager>>,
     ) -> McpResult<ReadResourceResult> {
+        #[cfg(feature = "v3")]
+        {
+            return Self::read_with_v3(uri, session, None).await;
+        }
+        #[cfg(not(feature = "v3"))]
+        {
+            return Self::read_with_v3(uri, session).await;
+        }
+    }
+
+    /// Read a resource by URI with optional V3 engine dispatch.
+    #[allow(clippy::ptr_arg)]
+    pub async fn read_with_v3(
+        uri: &str,
+        session: &Arc<Mutex<SessionManager>>,
+        #[cfg(feature = "v3")] v3_engine: Option<&crate::tools::v3_tools::SharedEngine>,
+    ) -> McpResult<ReadResourceResult> {
+        #[cfg(feature = "v3")]
+        if let Some(engine) = v3_engine {
+            if let Some(v3_result) = crate::v3_resources::read_v3_resource(uri, engine).await {
+                return v3_result;
+            }
+        }
+
         if let Some(id_str) = uri.strip_prefix("amem://node/") {
             let id: u64 = id_str
                 .parse()

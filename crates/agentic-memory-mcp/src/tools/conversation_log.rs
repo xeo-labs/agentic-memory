@@ -65,23 +65,22 @@ pub async fn execute(
         ));
     }
 
-    // Build content with a recognizable prefix.
-    let mut parts = Vec::new();
-    if let Some(ref topic) = params.topic {
-        parts.push(format!("topic={topic}"));
-    }
-    if let Some(ref msg) = params.user_message {
-        parts.push(format!("user: {msg}"));
-    }
-    if let Some(ref resp) = params.agent_response {
-        parts.push(format!("agent: {resp}"));
-    }
-    let content = format!("[conversation] {}", parts.join(" | "));
+    // Store as a dedicated conversation metadata channel to avoid polluting factual recall.
+    let content = format!(
+        "[conversation_meta] {}",
+        json!({
+            "channel": "conversation",
+            "version": 1,
+            "topic": params.topic,
+            "user_message": params.user_message,
+            "agent_response": params.agent_response
+        })
+    );
 
     let mut session = session.lock().await;
 
     let prev_id = session.last_temporal_node_id();
-    let (node_id, _) = session.add_event(EventType::Fact, &content, 0.85, vec![])?;
+    let (node_id, _) = session.add_event(EventType::Inference, &content, 0.72, vec![])?;
 
     // Link into the temporal chain.
     let mut temporal_edges = 0;

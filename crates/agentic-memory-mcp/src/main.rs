@@ -830,6 +830,20 @@ enum Commands {
     Stats,
 }
 
+fn enforce_mode_runtime_policy(mode: MemoryMode) {
+    let capture_mode = match mode {
+        MemoryMode::Minimal => "off",
+        MemoryMode::Smart => "safe",
+        MemoryMode::Full => "full",
+    };
+    std::env::set_var("AMEM_AUTO_CAPTURE_MODE", capture_mode);
+    tracing::info!(
+        "Runtime policy: memory_mode={:?} => AMEM_AUTO_CAPTURE_MODE={}",
+        mode,
+        capture_mode
+    );
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -861,10 +875,12 @@ async fn main() -> anyhow::Result<()> {
                 tracing::warn!("Unknown mode '{mode}', falling back to 'smart'");
                 MemoryMode::Smart
             });
+            enforce_mode_runtime_policy(memory_mode);
             tracing::info!("AgenticMemory MCP server");
             tracing::info!("Brain: {memory_path}");
             tracing::info!("Mode: {mode}");
-            let session = SessionManager::open(&memory_path)?;
+            let mut session = SessionManager::open(&memory_path)?;
+            session.apply_memory_mode(memory_mode);
             let maintenance_interval = session.maintenance_interval();
             let session = Arc::new(Mutex::new(session));
             let _maintenance_task = spawn_maintenance(session.clone(), maintenance_interval);
@@ -899,6 +915,7 @@ async fn main() -> anyhow::Result<()> {
                 tracing::warn!("Unknown mode '{mode}', falling back to 'smart'");
                 MemoryMode::Smart
             });
+            enforce_mode_runtime_policy(memory_mode);
 
             // Resolve token: CLI flag > env var
             let effective_token = token.or_else(|| std::env::var("AGENTIC_TOKEN").ok());
@@ -923,7 +940,8 @@ async fn main() -> anyhow::Result<()> {
                 tracing::info!("AgenticMemory MCP server");
                 tracing::info!("Brain: {memory_path}");
                 tracing::info!("Mode: {mode}");
-                let session = SessionManager::open(&memory_path)?;
+                let mut session = SessionManager::open(&memory_path)?;
+                session.apply_memory_mode(memory_mode);
                 let maintenance_interval = session.maintenance_interval();
                 let session = Arc::new(Mutex::new(session));
                 let _maintenance_task = spawn_maintenance(session.clone(), maintenance_interval);

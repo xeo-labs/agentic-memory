@@ -1,6 +1,6 @@
 //! Configuration loading from file, environment, and CLI arguments.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -68,23 +68,17 @@ pub fn load_config(path: &str) -> McpResult<ServerConfig> {
 /// Resolve the memory file path using priority order:
 /// 1. Explicit path (CLI arg)
 /// 2. AMEM_BRAIN environment variable
-/// 3. .amem/brain.amem in current directory
-/// 4. ~/.brain.amem (global default)
+/// 3. ~/.brain.amem (global default)
 pub fn resolve_memory_path(explicit: Option<&str>) -> String {
     if let Some(path) = explicit {
-        return path.to_string();
+        return absolutize_path(path);
     }
 
     if let Ok(env_path) = std::env::var("AMEM_BRAIN") {
-        return env_path;
+        return absolutize_path(&env_path);
     }
 
-    let cwd_brain = PathBuf::from(".amem/brain.amem");
-    if cwd_brain.exists() {
-        return cwd_brain.display().to_string();
-    }
-
-    resolve_default_memory_path()
+    absolutize_path(&resolve_default_memory_path())
 }
 
 fn resolve_default_memory_path() -> String {
@@ -93,4 +87,32 @@ fn resolve_default_memory_path() -> String {
         .unwrap_or_else(|_| ".".to_string());
 
     format!("{home}/.brain.amem")
+}
+
+fn absolutize_path(raw: &str) -> String {
+    let expanded = expand_home(raw);
+    let path = PathBuf::from(expanded);
+    if path.is_absolute() {
+        return path.display().to_string();
+    }
+    std::env::current_dir()
+        .unwrap_or_else(|_| Path::new(".").to_path_buf())
+        .join(path)
+        .display()
+        .to_string()
+}
+
+fn expand_home(raw: &str) -> String {
+    if raw == "~" {
+        return std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .unwrap_or_else(|_| ".".to_string());
+    }
+    if let Some(rest) = raw.strip_prefix("~/") {
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .unwrap_or_else(|_| ".".to_string());
+        return format!("{home}/{rest}");
+    }
+    raw.to_string()
 }

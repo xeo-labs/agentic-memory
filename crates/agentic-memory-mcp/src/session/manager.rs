@@ -13,7 +13,7 @@ use agentic_memory::{
 };
 use serde_json::Value;
 
-use crate::types::{McpError, McpResult};
+use crate::types::{McpError, McpResult, MemoryMode};
 
 /// Default auto-save interval.
 const DEFAULT_AUTO_SAVE_SECS: u64 = 30;
@@ -486,6 +486,25 @@ impl SessionManager {
     /// Current session ID.
     pub fn current_session_id(&self) -> u32 {
         self.current_session
+    }
+
+    /// Apply runtime capture policy based on negotiated memory mode.
+    ///
+    /// This ties mode to server behavior (not just client instructions):
+    /// - minimal => auto-capture off
+    /// - smart   => safe auto-capture
+    /// - full    => full auto-capture
+    pub fn apply_memory_mode(&mut self, mode: MemoryMode) {
+        self.auto_capture_mode = match mode {
+            MemoryMode::Minimal => AutoCaptureMode::Off,
+            MemoryMode::Smart => AutoCaptureMode::Safe,
+            MemoryMode::Full => AutoCaptureMode::Full,
+        };
+        tracing::info!(
+            "Applied memory mode policy: mode={:?} auto_capture_mode={}",
+            mode,
+            self.auto_capture_mode.as_str()
+        );
     }
 
     /// Start a new session, optionally with an explicit ID.

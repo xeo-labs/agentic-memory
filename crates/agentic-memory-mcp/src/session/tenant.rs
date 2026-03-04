@@ -8,7 +8,7 @@ use tokio::sync::Mutex;
 
 use super::autosave::spawn_maintenance;
 use super::SessionManager;
-use crate::types::McpResult;
+use crate::types::{McpResult, MemoryMode};
 
 /// Registry of per-user sessions for multi-tenant mode.
 pub struct TenantRegistry {
@@ -28,7 +28,11 @@ impl TenantRegistry {
     /// Get or create a session for the given user ID.
     ///
     /// On first access, creates `{data_dir}/{user_id}.amem` and opens a session.
-    pub fn get_or_create(&mut self, user_id: &str) -> McpResult<Arc<Mutex<SessionManager>>> {
+    pub fn get_or_create(
+        &mut self,
+        user_id: &str,
+        memory_mode: MemoryMode,
+    ) -> McpResult<Arc<Mutex<SessionManager>>> {
         if let Some(session) = self.sessions.get(user_id) {
             return Ok(session.clone());
         }
@@ -46,7 +50,8 @@ impl TenantRegistry {
 
         tracing::info!("Opening brain for user '{user_id}': {path_str}");
 
-        let session = SessionManager::open(&path_str)?;
+        let mut session = SessionManager::open(&path_str)?;
+        session.apply_memory_mode(memory_mode);
         let maintenance_interval = session.maintenance_interval();
         let session = Arc::new(Mutex::new(session));
         let _maintenance_task = spawn_maintenance(session.clone(), maintenance_interval);
