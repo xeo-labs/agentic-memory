@@ -650,7 +650,7 @@ fn truncate_for_log(input: &str, max_chars: usize) -> String {
         return out;
     }
     out = out.chars().take(max_chars).collect();
-    out.push_str("…");
+    out.push('…');
     out
 }
 
