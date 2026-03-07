@@ -7,20 +7,15 @@ use super::store::{LongevityError, LongevityStore};
 use serde::{Deserialize, Serialize};
 
 /// Migration strategy for transitioning between embedding models.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum MigrationStrategy {
     /// Re-embed on access (spread cost over time)
+    #[default]
     LazyReEmbedding,
     /// Train linear mapping from old space to new space
     ProjectionMapping,
     /// Use anchor memories as bridge between embedding spaces
     SemanticAnchors,
-}
-
-impl Default for MigrationStrategy {
-    fn default() -> Self {
-        Self::LazyReEmbedding
-    }
 }
 
 /// Registered embedding model with lifecycle tracking.
