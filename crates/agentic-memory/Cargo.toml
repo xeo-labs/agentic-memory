@@ -20,11 +20,12 @@ name = "amem"
 path = "src/bin/amem.rs"
 
 [features]
-default = ["cli", "format", "ffi", "v3"]
+default = ["cli", "format", "ffi", "v3", "longevity"]
 cli = ["dep:clap", "dep:clap_complete", "dep:rustyline", "format"]
 format = ["dep:lz4_flex", "dep:memmap2"]
 ffi = ["format"]
 v3 = []
+longevity = ["v3", "dep:rusqlite", "dep:notify", "dep:lettre", "dep:ulid"]
 encryption = ["dep:chacha20poly1305", "dep:argon2"]
 
 [dependencies]
@@ -67,6 +68,12 @@ base64 = "0.22"
 # V3 encryption (optional)
 chacha20poly1305 = { version = "0.10", optional = true }
 argon2 = { version = "0.5", optional = true }
+
+# V4 Longevity Engine (optional)
+rusqlite = { version = "0.31", features = ["bundled", "blob"], optional = true }
+notify = { version = "6.1", optional = true }
+lettre = { version = "0.11", features = ["tokio1-native-tls", "builder", "smtp-transport"], optional = true }
+ulid = { version = "1.1", optional = true }
 
 [dev-dependencies]
 # Testing

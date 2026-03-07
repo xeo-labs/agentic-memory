@@ -49,6 +49,9 @@ tower-http = { version = "0.5", features = ["cors"], optional = true }
 # Time handling
 chrono = { version = "0.4", features = ["serde"] }
 
+# Directory detection (for longevity store path)
+dirs = "5.0"
+
 [dev-dependencies]
 tempfile = "3.9"
 tokio-test = "0.4"
@@ -58,6 +61,7 @@ default = ["stdio"]
 stdio = []
 sse = ["axum", "tower", "tower-http"]
 v3 = ["agentic-memory/v3"]
+longevity = ["agentic-memory/longevity", "v3"]
 all-transports = ["stdio", "sse"]
 
 [[bin]]

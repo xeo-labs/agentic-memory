@@ -38,4 +38,7 @@ pub mod invention_transcendent; // Inventions 21-24: Memory Singularity, Tempora
 #[cfg(feature = "v3")]
 pub mod v3_tools;
 
+#[cfg(feature = "longevity")]
+pub mod longevity_tools;
+
 pub use registry::ToolRegistry;

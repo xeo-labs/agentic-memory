@@ -92,6 +92,10 @@ impl ToolRegistry {
         {
             tools.extend(super::v3_tools::list_v3_tools());
         }
+        #[cfg(feature = "longevity")]
+        {
+            tools.extend(super::longevity_tools::all_definitions());
+        }
         tools
     }
 
@@ -174,9 +178,18 @@ impl ToolRegistry {
                     return result;
                 }
                 // TRANSCENDENT (21-24): 16 tools
-                if let Some(result) = invention_transcendent::try_execute(name, args, session).await
+                if let Some(result) = invention_transcendent::try_execute(name, args.clone(), session).await
                 {
                     return result;
+                }
+                // V4: Longevity tools (8 tools)
+                #[cfg(feature = "longevity")]
+                {
+                    if let Some(result) =
+                        super::longevity_tools::try_execute(name, args, session).await
+                    {
+                        return result;
+                    }
                 }
                 Err(McpError::ToolNotFound(name.to_string()))
             }
