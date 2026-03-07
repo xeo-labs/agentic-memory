@@ -224,7 +224,7 @@ fn stress_significance_custom_weights() {
         None,
     );
     let score = scorer.score_simple(&memory);
-    assert!(score >= 0.0 && score <= 1.0);
+    assert!((0.0..=1.0).contains(&score));
 }
 
 #[test]
@@ -245,7 +245,7 @@ fn stress_significance_1000_memories() {
             (chrono::Utc::now() - chrono::Duration::hours((i % 720) as i64)).to_rfc3339();
 
         let score = scorer.score_simple(&memory);
-        assert!(score >= 0.0 && score <= 1.0);
+        assert!((0.0..=1.0).contains(&score));
     }
 
     let elapsed = start.elapsed();
@@ -674,7 +674,7 @@ fn stress_forgetting_500_candidates() {
         eligible.len(),
         ineligible.len()
     );
-    assert!(eligible.len() > 0, "Some should be eligible");
+    assert!(!eligible.is_empty(), "Some should be eligible");
 
     // Execute forgetting
     let ids: Vec<String> = eligible.iter().map(|v| v.memory_id.clone()).collect();

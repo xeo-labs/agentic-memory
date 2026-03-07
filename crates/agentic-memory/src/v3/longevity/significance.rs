@@ -209,7 +209,7 @@ impl SignificanceScorer {
         });
 
         // 7. Uniqueness: 1.0 - avg_neighbor_similarity (outliers preserved longer)
-        let uniqueness = (1.0 - ctx.avg_neighbor_similarity).max(0.0).min(1.0);
+        let uniqueness = (1.0 - ctx.avg_neighbor_similarity).clamp(0.0, 1.0);
         factors.push(SignificanceFactor {
             name: "uniqueness".to_string(),
             value: uniqueness,
@@ -218,7 +218,7 @@ impl SignificanceScorer {
         });
 
         let final_score: f64 = factors.iter().map(|f| f.contribution).sum();
-        let final_score = final_score.max(0.0).min(1.0);
+        let final_score = final_score.clamp(0.0, 1.0);
 
         let threshold = match SignificanceThreshold::from_score(final_score) {
             SignificanceThreshold::Immune => "immune",
@@ -247,7 +247,7 @@ impl SignificanceScorer {
         let emotional = self.compute_emotional_valence(memory);
 
         let score = 0.4 * recency + 0.4 * access + 0.2 * emotional;
-        score.max(0.0).min(1.0)
+        score.clamp(0.0, 1.0)
     }
 
     fn compute_recency(&self, memory: &MemoryRecord) -> f64 {

@@ -192,7 +192,7 @@ impl ConsolidationEngine {
             (MemoryLayer::Episode, MemoryLayer::Summary) => {
                 // Group episodes into chunks of ~10 and summarize
                 for chunk in to_compress.chunks(10) {
-                    let refs: Vec<&MemoryRecord> = chunk.iter().copied().collect();
+                    let refs: Vec<&MemoryRecord> = chunk.to_vec();
                     let summary_content = Self::create_summary(&refs);
                     let source_ids: Vec<String> = refs.iter().map(|m| m.id.clone()).collect();
 
@@ -212,7 +212,7 @@ impl ConsolidationEngine {
                 }
             }
             (MemoryLayer::Summary, MemoryLayer::Pattern) => {
-                let refs: Vec<&MemoryRecord> = to_compress.iter().copied().collect();
+                let refs: Vec<&MemoryRecord> = to_compress.to_vec();
                 let patterns = MemoryHierarchy::extract_patterns(&refs);
                 let source_ids: Vec<String> = refs.iter().map(|m| m.id.clone()).collect();
 
@@ -233,7 +233,7 @@ impl ConsolidationEngine {
                 }
             }
             (MemoryLayer::Pattern, MemoryLayer::Trait) => {
-                let refs: Vec<&MemoryRecord> = to_compress.iter().copied().collect();
+                let refs: Vec<&MemoryRecord> = to_compress.to_vec();
                 let traits = MemoryHierarchy::distill_traits(&refs);
                 let source_ids: Vec<String> = refs.iter().map(|m| m.id.clone()).collect();
 

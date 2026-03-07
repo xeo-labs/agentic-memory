@@ -12,7 +12,7 @@ fn mcp_json_parse(c: &mut Criterion) {
 fn mcp_tool_dispatch(c: &mut Criterion) {
     c.bench_function("mcp_tool_dispatch", |b| {
         b.iter(|| {
-            let tools = vec!["tool1", "tool2", "tool3", "tool4", "tool5"];
+            let tools = ["tool1", "tool2", "tool3", "tool4", "tool5"];
             let target = "tool3";
             black_box(tools.iter().find(|&&t| t == target));
         })

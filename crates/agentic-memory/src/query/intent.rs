@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum ExtractionIntent {
     Exists,
+    #[default]
     IdsOnly,
     Summary,
     Fields,
@@ -24,11 +25,5 @@ impl ExtractionIntent {
     }
     pub fn is_minimal(&self) -> bool {
         matches!(self, Self::Exists | Self::IdsOnly)
-    }
-}
-
-impl Default for ExtractionIntent {
-    fn default() -> Self {
-        Self::IdsOnly
     }
 }

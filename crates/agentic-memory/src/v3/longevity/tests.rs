@@ -409,7 +409,7 @@ fn test_significance_simple_scoring() {
         None,
     );
     let score = scorer.score_simple(&memory);
-    assert!(score >= 0.0 && score <= 1.0);
+    assert!((0.0..=1.0).contains(&score));
 }
 
 #[test]
@@ -852,8 +852,10 @@ fn test_budget_layer_allocations() {
 #[test]
 fn test_budget_warning_threshold() {
     let budget = StorageBudget::with_budget(1000); // 1KB budget for testing
-    let mut stats = hierarchy::HierarchyStats::default();
-    stats.raw_bytes = 200; // Over 80% of 150 (15% allocation)
+    let stats = hierarchy::HierarchyStats {
+        raw_bytes: 200, // Over 80% of 150 (15% allocation)
+        ..Default::default()
+    };
 
     let layers = budget.layer_budgets(&stats);
     let raw = layers.iter().find(|l| l.layer == "event").unwrap();

@@ -626,79 +626,68 @@ mod tests {
 
     #[test]
     fn writes_header_and_entries() {
-        let dir = tempdir().unwrap_or_else(|_| Default::default());
-        let mut capture =
-            TransportCapture::for_tests(dir.path()).unwrap_or_else(|_| Default::default());
+        let dir = tempdir().expect("test fixture");
+        let mut capture = TransportCapture::for_tests(dir.path()).expect("test fixture");
         capture
             .capture_inbound(br#"{"jsonrpc":"2.0"}"#)
-            .unwrap_or_else(|_| Default::default());
+            .expect("test fixture");
         capture
             .capture_outbound(br#"{"result":{}}"#)
-            .unwrap_or_else(|_| Default::default());
-        capture.sync().unwrap_or_else(|_| Default::default());
+            .expect("test fixture");
+        capture.sync().expect("test fixture");
 
         let wal_path = dir.path().join("transport.wal");
         assert!(wal_path.exists());
-        let summary = recover_entries(&wal_path).unwrap_or_else(|_| Default::default());
+        let summary = recover_entries(&wal_path).expect("test fixture");
         assert_eq!(summary.entries, 2);
         assert_eq!(summary.next_sequence, 2);
     }
 
     #[test]
     fn truncates_partial_tail_on_reopen() {
-        let dir = tempdir().unwrap_or_else(|_| Default::default());
+        let dir = tempdir().expect("test fixture");
         let wal_path = dir.path().join("transport.wal");
 
-        let mut capture =
-            TransportCapture::for_tests(dir.path()).unwrap_or_else(|_| Default::default());
+        let mut capture = TransportCapture::for_tests(dir.path()).expect("test fixture");
         capture
             .capture_inbound(br#"{"method":"ping"}"#)
-            .unwrap_or_else(|_| Default::default());
-        capture.sync().unwrap_or_else(|_| Default::default());
+            .expect("test fixture");
+        capture.sync().expect("test fixture");
 
         {
             let mut wal = OpenOptions::new()
                 .append(true)
                 .open(&wal_path)
-                .unwrap_or_else(|_| Default::default());
+                .expect("test fixture");
             wal.write_all(b"\x10\x00\x00\x00garbage")
-                .unwrap_or_else(|_| Default::default());
-            wal.flush().unwrap_or_else(|_| Default::default());
+                .expect("test fixture");
+            wal.flush().expect("test fixture");
         }
 
-        let original_len = std::fs::metadata(&wal_path)
-            .unwrap_or_else(|_| Default::default())
-            .len();
-        let mut capture =
-            TransportCapture::for_tests(dir.path()).unwrap_or_else(|_| Default::default());
+        let original_len = std::fs::metadata(&wal_path).expect("test fixture").len();
+        let mut capture = TransportCapture::for_tests(dir.path()).expect("test fixture");
         capture
             .capture_outbound(br#"{"ok":true}"#)
-            .unwrap_or_else(|_| Default::default());
-        capture.sync().unwrap_or_else(|_| Default::default());
+            .expect("test fixture");
+        capture.sync().expect("test fixture");
 
-        let final_len = std::fs::metadata(&wal_path)
-            .unwrap_or_else(|_| Default::default())
-            .len();
+        let final_len = std::fs::metadata(&wal_path).expect("test fixture").len();
         assert!(final_len < original_len + 128);
-        let summary = recover_entries(&wal_path).unwrap_or_else(|_| Default::default());
+        let summary = recover_entries(&wal_path).expect("test fixture");
         assert_eq!(summary.entries, 2);
     }
 
     #[test]
     fn disabled_capture_is_noop() {
         let mut capture = TransportCapture::Disabled;
-        capture
-            .capture_inbound(b"abc")
-            .unwrap_or_else(|_| Default::default());
-        capture
-            .capture_outbound(b"def")
-            .unwrap_or_else(|_| Default::default());
-        capture.sync().unwrap_or_else(|_| Default::default());
+        capture.capture_inbound(b"abc").expect("test fixture");
+        capture.capture_outbound(b"def").expect("test fixture");
+        capture.sync().expect("test fixture");
     }
 
     #[test]
     fn recovers_zero_from_header_only_file() {
-        let dir = tempdir().unwrap_or_else(|_| Default::default());
+        let dir = tempdir().expect("test fixture");
         let wal_path = dir.path().join("transport.wal");
         let mut file = OpenOptions::new()
             .create(true)
@@ -706,39 +695,36 @@ mod tests {
             .read(true)
             .truncate(true)
             .open(&wal_path)
-            .unwrap_or_else(|_| Default::default());
-        write_header(&mut file, *Uuid::new_v4().as_bytes()).unwrap_or_else(|_| Default::default());
-        file.seek(SeekFrom::End(0))
-            .unwrap_or_else(|_| Default::default());
-        file.write_all(&[1, 2, 3])
-            .unwrap_or_else(|_| Default::default());
-        file.flush().unwrap_or_else(|_| Default::default());
+            .expect("test fixture");
+        write_header(&mut file, *Uuid::new_v4().as_bytes()).expect("test fixture");
+        file.seek(SeekFrom::End(0)).expect("test fixture");
+        file.write_all(&[1, 2, 3]).expect("test fixture");
+        file.flush().expect("test fixture");
 
-        let summary = recover_entries(&wal_path).unwrap_or_else(|_| Default::default());
+        let summary = recover_entries(&wal_path).expect("test fixture");
         assert_eq!(summary.entries, 0);
         assert_eq!(summary.truncate_to, HEADER_BYTES as u64);
     }
 
     #[test]
     fn public_read_entries_and_status_work() {
-        let dir = tempdir().unwrap_or_else(|_| Default::default());
-        let mut capture =
-            TransportCapture::for_tests(dir.path()).unwrap_or_else(|_| Default::default());
+        let dir = tempdir().expect("test fixture");
+        let mut capture = TransportCapture::for_tests(dir.path()).expect("test fixture");
         capture
             .capture_inbound(br#"{"jsonrpc":"2.0","method":"ping"}"#)
-            .unwrap_or_else(|_| Default::default());
+            .expect("test fixture");
         capture
             .capture_outbound(br#"{"jsonrpc":"2.0","result":{}}"#)
-            .unwrap_or_else(|_| Default::default());
-        capture.sync().unwrap_or_else(|_| Default::default());
+            .expect("test fixture");
+        capture.sync().expect("test fixture");
 
         let wal_path = dir.path().join("transport.wal");
-        let status = wal_status(&wal_path).unwrap_or_else(|_| Default::default());
+        let status = wal_status(&wal_path).expect("test fixture");
         assert!(status.exists);
         assert_eq!(status.entries, 2);
         assert!(status.session_id.is_some());
 
-        let entries = read_entries(&wal_path, None).unwrap_or_else(|_| Default::default());
+        let entries = read_entries(&wal_path, None).expect("test fixture");
         assert_eq!(entries.len(), 2);
         assert_eq!(entries[0].direction.as_str(), "inbound");
         assert_eq!(entries[1].direction.as_str(), "outbound");

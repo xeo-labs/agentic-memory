@@ -275,7 +275,7 @@ impl BackupDaemon {
             .collect();
 
         // Sort by name (which includes date)
-        backups.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+        backups.sort_by_key(|entry| std::cmp::Reverse(entry.file_name()));
 
         // Keep only the allowed number of backups
         let max_keep = self.config.retention.daily_count as usize;

@@ -6,20 +6,18 @@
 use agentic_memory::v3::longevity::backup::{BackupConfig, BackupDaemon};
 use agentic_memory::v3::longevity::budget::StorageBudget;
 use agentic_memory::v3::longevity::capture::{
-    CaptureDaemon, CaptureEvent, CaptureRole, CaptureSource, ContentDedup,
+    CaptureDaemon, CaptureEvent, CaptureRole, CaptureSource,
 };
 use agentic_memory::v3::longevity::consolidation::{
     ConsolidationEngine, ConsolidationSchedule, ConsolidationTask,
 };
 use agentic_memory::v3::longevity::embedding_migration::EmbeddingMigrator;
 use agentic_memory::v3::longevity::encryption_rotation::EncryptionRotator;
-use agentic_memory::v3::longevity::forgetting::ForgettingProtocol;
-use agentic_memory::v3::longevity::hierarchy::{MemoryHierarchy, MemoryLayer, MemoryRecord};
+use agentic_memory::v3::longevity::hierarchy::{MemoryLayer, MemoryRecord};
 use agentic_memory::v3::longevity::integrity::IntegrityVerifier;
 use agentic_memory::v3::longevity::significance::SignificanceScorer;
 use agentic_memory::v3::longevity::store::LongevityStore;
 use agentic_memory::v3::longevity::sync::SyncProtocol;
-use std::sync::Arc;
 
 // ═══════════════════════════════════════════════════════════════════
 // TEST I-1: Capture → WAL → SQLite Pipeline
@@ -67,7 +65,7 @@ fn test_i1_capture_wal_sqlite_pipeline() {
     // Each should have significance computed
     for record in &raw {
         let score = scorer.score_simple(record);
-        assert!(score >= 0.0 && score <= 1.0);
+        assert!((0.0..=1.0).contains(&score));
     }
 
     // Dedup catches duplicates — feed 10 again
@@ -159,7 +157,7 @@ fn test_i2_consolidation_pipeline() {
         project_id: "project-1".to_string(),
         max_memories: 1000,
     };
-    let r2 = engine.run(&store, &task2).unwrap();
+    engine.run(&store, &task2).unwrap();
 
     // Monthly: Summary → Pattern
     let summaries = store
@@ -179,7 +177,7 @@ fn test_i2_consolidation_pipeline() {
         project_id: "project-1".to_string(),
         max_memories: 1000,
     };
-    let r3 = engine.run(&store, &task3).unwrap();
+    engine.run(&store, &task3).unwrap();
 
     // Verify hierarchy stats
     let stats = store.hierarchy_stats("project-1").unwrap();
@@ -254,7 +252,7 @@ fn test_i3_ghost_writer_context() {
     assert!(output.len() > 100, "Must have meaningful content");
 
     // Verify it's valid UTF-8 markdown
-    assert!(output.is_ascii() || output.len() > 0);
+    assert!(!output.is_empty());
 }
 
 // ═══════════════════════════════════════════════════════════════════

@@ -137,7 +137,7 @@ impl LongevityStore {
                  encryption_key_id, schema_version
                  FROM memories WHERE id = ?1",
                 params![id],
-                |row| Self::row_to_record(row),
+                Self::row_to_record,
             )
             .optional()?;
         Ok(result)
@@ -190,7 +190,7 @@ impl LongevityStore {
         let records = stmt
             .query_map(
                 params![project_id, min_significance, max_significance, limit],
-                |row| Self::row_to_record(row),
+                Self::row_to_record,
             )?
             .filter_map(|r| r.ok())
             .collect();
@@ -288,6 +288,7 @@ impl LongevityStore {
     // ═══════════════════════════════════════════════════════════════
 
     /// Log a consolidation event.
+    #[allow(clippy::too_many_arguments)]
     pub fn log_consolidation(
         &self,
         id: &str,

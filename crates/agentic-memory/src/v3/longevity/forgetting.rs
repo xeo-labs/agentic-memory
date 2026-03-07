@@ -21,7 +21,7 @@ pub struct ForgettingVerdict {
 
 /// The forgetting protocol evaluates and executes safe memory deletion.
 pub struct ForgettingProtocol {
-    scorer: SignificanceScorer,
+    _scorer: SignificanceScorer,
     /// Minimum significance below which forgetting is considered
     threshold: f64,
     /// Minimum age in days before forgetting is considered
@@ -31,7 +31,7 @@ pub struct ForgettingProtocol {
 impl ForgettingProtocol {
     pub fn new() -> Self {
         Self {
-            scorer: SignificanceScorer::new(),
+            _scorer: SignificanceScorer::new(),
             threshold: 0.2,
             min_age_days: 30.0,
         }
@@ -106,7 +106,7 @@ impl ForgettingProtocol {
 
                 let (eligible, reason) = self.check_eligibility(&memory, age_days);
                 if eligible {
-                    store.delete_memories(&[id.clone()])?;
+                    store.delete_memories(std::slice::from_ref(id))?;
                     forgotten.push(id.clone());
                 } else {
                     skipped.push((id.clone(), reason));
@@ -120,7 +120,7 @@ impl ForgettingProtocol {
             forgotten_count: forgotten.len() as u32,
             skipped_count: skipped.len() as u32,
             forgotten_ids: forgotten,
-            skipped: skipped,
+            skipped,
         })
     }
 

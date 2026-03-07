@@ -76,9 +76,9 @@ impl<K: Eq + Hash + Clone, V: Clone> LruCache<K, V> {
     }
 
     pub fn contains(&self, key: &K) -> bool {
-        self.store.get(key).map_or(false, |e| {
-            Instant::now().duration_since(e.inserted_at) <= self.ttl
-        })
+        self.store
+            .get(key)
+            .is_some_and(|e| Instant::now().duration_since(e.inserted_at) <= self.ttl)
     }
 
     pub fn len(&self) -> usize {

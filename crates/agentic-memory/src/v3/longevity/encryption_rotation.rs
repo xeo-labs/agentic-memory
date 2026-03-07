@@ -26,7 +26,7 @@ impl KeyStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_label(s: &str) -> Option<Self> {
         match s {
             "active" => Some(Self::Active),
             "retired" => Some(Self::Retired),
